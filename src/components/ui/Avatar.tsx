@@ -1,9 +1,9 @@
 import { initials } from "@/lib/format";
 
-export function Avatar({ name, size = 28 }: { name: string; size?: number }) {
+export function Avatar({ name, size = 32 }: { name: string; size?: number }) {
   return (
     <div
-      className="flex shrink-0 items-center justify-center rounded-full bg-ink text-xs font-semibold text-white"
+      className="flex shrink-0 items-center justify-center rounded-full bg-[#0F172A] text-xs font-bold text-white shadow-sm ring-1 ring-slate-200"
       style={{ width: size, height: size }}
       title={name}
     >

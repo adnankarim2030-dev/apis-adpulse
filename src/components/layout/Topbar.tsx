@@ -12,15 +12,15 @@ export function Topbar({
   title: string;
 }) {
   return (
-    <header className="flex items-center justify-between border-b border-line bg-paper-card px-5 py-3.5 md:px-7">
-      <h1 className="font-display text-lg font-semibold text-ink">{title}</h1>
+    <header className="flex items-center justify-between border-b border-slate-200/80 bg-white px-6 py-4 md:px-8">
+      <h1 className="font-display text-lg font-bold text-[#0F172A] tracking-tight">{title}</h1>
       <div className="flex items-center gap-4">
-        <span className="hidden rounded-sm bg-line-soft px-2 py-0.5 text-xs font-medium text-slate sm:inline-block">
-          {role === "CEO" ? "Executive" : "Staff"}
+        <span className="hidden rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-[#0F172A] border border-slate-200 sm:inline-block">
+          {role === "CEO" ? "👑 Executive" : "Staff"}
         </span>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           <Avatar name={name} />
-          <span className="hidden text-sm font-medium text-ink sm:inline">{name}</span>
+          <span className="hidden text-sm font-semibold text-[#0F172A] sm:inline">{name}</span>
         </div>
         <LogoutButton />
       </div>

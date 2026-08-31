@@ -51,7 +51,7 @@ export function LoginForm() {
           autoComplete="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full rounded border border-white/15 bg-ink px-3 py-2 text-sm text-white placeholder:text-white/30 focus:border-signal"
+          className="w-full rounded-xl border border-white/15 bg-[#090D16] px-3.5 py-2.5 text-sm text-white placeholder:text-white/30 focus:border-[#E31E24] focus:ring-1 focus:ring-[#E31E24] focus:outline-none transition-all"
           placeholder="you@adpulse.com"
         />
       </div>
@@ -66,12 +66,12 @@ export function LoginForm() {
           autoComplete="current-password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="w-full rounded border border-white/15 bg-ink px-3 py-2 text-sm text-white placeholder:text-white/30 focus:border-signal"
+          className="w-full rounded-xl border border-white/15 bg-[#090D16] px-3.5 py-2.5 text-sm text-white placeholder:text-white/30 focus:border-[#E31E24] focus:ring-1 focus:ring-[#E31E24] focus:outline-none transition-all"
           placeholder="••••••••"
         />
       </div>
-      {error && <p className="text-sm text-status-critical">{error}</p>}
-      <Button type="submit" variant="signal" disabled={loading} className="w-full">
+      {error && <p className="text-sm font-medium text-[#E31E24]">{error}</p>}
+      <Button type="submit" variant="primary" disabled={loading} className="w-full py-2.5 mt-2">
         {loading ? "Signing in…" : "Sign in"}
       </Button>
     </form>
