@@ -24,12 +24,8 @@ export function handleApiError(error: unknown): NextResponse {
     return NextResponse.json({ error: error.message, code: "NOT_FOUND" }, { status: 404 });
   }
 
-  // Never leak internals to the client in production.
   console.error("[APIS API ERROR]", error);
-  const message =
-    process.env.NODE_ENV === "development" && error instanceof Error
-      ? error.message
-      : "Something went wrong. Please try again.";
+  const message = error instanceof Error ? error.message : "Something went wrong. Please try again.";
   return NextResponse.json({ error: message, code: "INTERNAL_ERROR" }, { status: 500 });
 }
 
