@@ -8,7 +8,9 @@ import { jwtVerify } from "jose";
 // Never rely on this file alone for authorization.
 
 const AUTH_COOKIE_NAME = process.env.AUTH_COOKIE_NAME || "apis_session";
-const secretKey = new TextEncoder().encode(process.env.AUTH_SECRET);
+const rawSecret =
+  process.env.AUTH_SECRET || "7f9dccdbcb7dfb800ab31561b227f6e05c7ccaf5603d5af748cc82606e735c66031634fea8598cd603a2178438d49615";
+const secretKey = new TextEncoder().encode(rawSecret);
 
 const PUBLIC_PATHS = ["/login", "/api/auth/login"];
 
