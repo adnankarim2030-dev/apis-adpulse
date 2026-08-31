@@ -36,6 +36,16 @@ const config: Config = {
           critical: "#C13A3A",
           info: "#3A55D9",
         },
+        adpulse: {
+          red: {
+            DEFAULT: "var(--adpulse-red-primary, #E31E24)",
+            hover: "var(--adpulse-red-hover, #C6151B)",
+          },
+          slate: "var(--adpulse-dark-slate, #0F172A)",
+          teal: "var(--adpulse-agency-teal, #14B8A6)",
+          dark: "var(--bg-app-dark, #090D16)",
+          surface: "var(--bg-card-surface, #1E293B)",
+        },
       },
       fontFamily: {
         display: ["var(--font-display)", "sans-serif"],
@@ -46,6 +56,7 @@ const config: Config = {
         DEFAULT: "4px",
         md: "6px",
         lg: "8px",
+        enterprise: "var(--radius-enterprise, 12px)",
       },
       boxShadow: {
         none: "none",

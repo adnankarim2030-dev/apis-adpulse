@@ -2,6 +2,24 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  /* Brand Core Colors */
+  --adpulse-red-primary: #E31E24;     /* Logo deep dynamic red */
+  --adpulse-red-hover: #C6151B;       /* Secondary button state */
+  --adpulse-dark-slate: #0F172A;      /* Premium deep sidebar background */
+  --adpulse-agency-teal: #14B8A6;     /* Logo background matching glow */
+  
+  /* System Gray Scale */
+  --bg-app-dark: #090D16;             /* Modern dark mode background */
+  --bg-card-surface: #1E293B;         /* Clean elevated card bodies */
+  --text-primary: #F8FAFC;            /* High legibility layout header */
+  --text-secondary: #94A3B8;          /* Descriptions and metadata gray */
+  
+  /* Borders & Shadows */
+  --border-glow: rgba(227, 30, 36, 0.15); /* Subtle brand aura shadow */
+  --radius-enterprise: 12px;          /* Clean dashboard component rounding */
+}
+
 @layer base {
   html {
     -webkit-font-smoothing: antialiased;
