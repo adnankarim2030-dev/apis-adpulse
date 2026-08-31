@@ -11,10 +11,10 @@ export function KpiCard({
 }) {
   return (
     <div className="rounded-xl border border-slate-200/80 bg-white px-5 py-4 shadow-sm shadow-slate-200/40 transition-all hover:border-slate-300">
-      <p className="text-xs font-semibold uppercase tracking-wider text-[#94A3B8]">{label}</p>
+      <p className="text-xs font-bold uppercase tracking-wider text-[#94A3B8]">{label}</p>
       <p
         className={clsx(
-          "mt-1.5 font-display text-2xl font-bold tabular tracking-tight",
+          "mt-2 font-display text-3xl font-bold tabular tracking-tight",
           tone === "signal" && "text-[#14B8A6]",
           tone === "critical" && "text-[#E31E24]",
           tone === "default" && "text-[#0F172A]"

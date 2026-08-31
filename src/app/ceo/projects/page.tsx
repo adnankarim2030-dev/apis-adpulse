@@ -58,45 +58,45 @@ export default async function CeoProjectsPage({ searchParams }: PageProps) {
       {projects.length === 0 ? (
         <EmptyState title="No projects match these filters" description="Try clearing filters, or create a new project to get started." />
       ) : (
-        <div className="overflow-x-auto rounded-md border border-line bg-paper-card">
-          <table className="w-full text-left text-sm">
+        <div className="overflow-x-auto rounded-xl border border-slate-200/80 bg-white shadow-sm">
+          <table className="w-full text-left text-base">
             <thead>
-              <tr className="border-b border-line text-xs text-slate-soft">
-                <th className="px-4 py-2.5 font-medium">Project</th>
-                <th className="px-4 py-2.5 font-medium">Client</th>
-                <th className="px-4 py-2.5 font-medium">Manager</th>
-                <th className="px-4 py-2.5 font-medium">Status</th>
-                <th className="px-4 py-2.5 font-medium">Priority</th>
-                <th className="px-4 py-2.5 font-medium">Tasks</th>
-                <th className="px-4 py-2.5 font-medium">Progress</th>
-                <th className="px-4 py-2.5 font-medium">Deadline</th>
+              <tr className="border-b border-slate-100 text-xs font-bold uppercase tracking-wider text-slate-400 bg-slate-50/50">
+                <th className="px-5 py-3.5 font-bold">Project</th>
+                <th className="px-5 py-3.5 font-bold">Client</th>
+                <th className="px-5 py-3.5 font-bold">Manager</th>
+                <th className="px-5 py-3.5 font-bold">Status</th>
+                <th className="px-5 py-3.5 font-bold">Priority</th>
+                <th className="px-5 py-3.5 font-bold">Tasks</th>
+                <th className="px-5 py-3.5 font-bold">Progress</th>
+                <th className="px-5 py-3.5 font-bold">Deadline</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-slate-100">
               {projects.map((project) => (
-                <tr key={project.id} className="border-b border-line last:border-0 hover:bg-paper">
-                  <td className="px-4 py-3">
-                    <Link href={`/ceo/projects/${project.id}`} className="font-medium text-ink hover:underline">
+                <tr key={project.id} className="hover:bg-slate-50/70 transition-colors">
+                  <td className="px-5 py-4">
+                    <Link href={`/ceo/projects/${project.id}`} className="font-semibold text-[#0F172A] hover:text-[#E31E24] transition-colors">
                       {project.name}
                     </Link>
-                    <p className="text-xs text-slate-soft">{project.code}</p>
+                    <p className="text-xs text-slate-400 mt-0.5">{project.code}</p>
                   </td>
-                  <td className="px-4 py-3 text-slate">{project.client?.name ?? "—"}</td>
-                  <td className="px-4 py-3 text-slate">{project.projectManager?.name ?? "Unassigned"}</td>
-                  <td className="px-4 py-3">
+                  <td className="px-5 py-4 text-sm font-medium text-slate-600">{project.client?.name ?? "—"}</td>
+                  <td className="px-5 py-4 text-sm font-medium text-slate-600">{project.projectManager?.name ?? "Unassigned"}</td>
+                  <td className="px-5 py-4">
                     <StatusBadge status={project.status} />
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-5 py-4">
                     <PriorityBadge priority={project.priority} />
                   </td>
-                  <td className="px-4 py-3 text-slate">{project._count.tasks}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <ProgressBar value={project.progressPercent} className="w-20" />
-                      <span className="tabular text-xs text-slate-soft">{project.progressPercent}%</span>
+                  <td className="px-5 py-4 text-sm font-semibold tabular text-slate-700">{project._count.tasks}</td>
+                  <td className="px-5 py-4">
+                    <div className="flex items-center gap-3">
+                      <ProgressBar value={project.progressPercent} className="w-24" />
+                      <span className="tabular text-xs font-semibold text-slate-500">{project.progressPercent}%</span>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-slate">{formatDate(project.expectedCompletionDate)}</td>
+                  <td className="px-5 py-4 text-sm font-medium text-slate-600">{formatDate(project.expectedCompletionDate)}</td>
                 </tr>
               ))}
             </tbody>

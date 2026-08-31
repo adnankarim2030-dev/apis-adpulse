@@ -37,9 +37,9 @@ export function Sidebar({ role, activePath }: { role: Role; activePath: string }
             <Link
               key={item.href}
               href={item.href}
-              className={`flex items-center gap-2.5 rounded-xl px-3.5 py-2.5 text-sm font-medium transition-all ${
+              className={`flex items-center gap-2.5 rounded-xl px-4 py-3 text-base font-semibold transition-all ${
                 active
-                  ? "bg-[#E31E24] text-white shadow-md shadow-[#E31E24]/20 font-semibold"
+                  ? "bg-[#E31E24] text-white shadow-md shadow-[#E31E24]/25 font-bold"
                   : "text-[#94A3B8] hover:bg-slate-800/70 hover:text-white"
               }`}
             >

@@ -26,38 +26,38 @@ export default async function StaffListPage() {
       {staff.length === 0 ? (
         <EmptyState title="No staff accounts yet" description="Staff accounts are created from Settings in a later phase; seed data provides five to explore now." />
       ) : (
-        <div className="overflow-x-auto rounded-md border border-line bg-paper-card">
-          <table className="w-full text-left text-sm">
+        <div className="overflow-x-auto rounded-xl border border-slate-200/80 bg-white shadow-sm">
+          <table className="w-full text-left text-base">
             <thead>
-              <tr className="border-b border-line text-xs text-slate-soft">
-                <th className="px-4 py-2.5 font-medium">Staff</th>
-                <th className="px-4 py-2.5 font-medium">Department</th>
-                <th className="px-4 py-2.5 font-medium">Active Tasks</th>
-                <th className="px-4 py-2.5 font-medium">Critical</th>
-                <th className="px-4 py-2.5 font-medium">Overdue</th>
-                <th className="px-4 py-2.5 font-medium">Workload</th>
+              <tr className="border-b border-slate-100 text-xs font-bold uppercase tracking-wider text-slate-400 bg-slate-50/50">
+                <th className="px-5 py-3.5 font-bold">Staff</th>
+                <th className="px-5 py-3.5 font-bold">Department</th>
+                <th className="px-5 py-3.5 font-bold">Active Tasks</th>
+                <th className="px-5 py-3.5 font-bold">Critical</th>
+                <th className="px-5 py-3.5 font-bold">Overdue</th>
+                <th className="px-5 py-3.5 font-bold">Workload</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-slate-100">
               {staff.map((member) => (
-                <tr key={member.id} className="border-b border-line last:border-0 hover:bg-paper">
-                  <td className="px-4 py-3">
-                    <Link href={`/ceo/staff/${member.id}`} className="flex items-center gap-2.5">
-                      <Avatar name={member.name} />
+                <tr key={member.id} className="hover:bg-slate-50/70 transition-colors">
+                  <td className="px-5 py-4">
+                    <Link href={`/ceo/staff/${member.id}`} className="flex items-center gap-3">
+                      <Avatar name={member.name} size={36} />
                       <div>
-                        <p className="font-medium text-ink hover:underline">{member.name}</p>
-                        <p className="text-xs text-slate-soft">{member.jobTitle ?? member.email}</p>
+                        <p className="font-semibold text-[#0F172A] hover:text-[#E31E24] transition-colors">{member.name}</p>
+                        <p className="text-xs text-slate-400 mt-0.5">{member.jobTitle ?? member.email}</p>
                       </div>
                     </Link>
                   </td>
-                  <td className="px-4 py-3 text-slate">{member.department ?? "—"}</td>
-                  <td className="px-4 py-3 tabular text-slate">{member.activeTasks}</td>
-                  <td className="px-4 py-3 tabular text-slate">{member.criticalTasks}</td>
-                  <td className="px-4 py-3 tabular text-slate">
-                    <span className={member.overdueTasks > 0 ? "font-medium text-status-critical" : ""}>{member.overdueTasks}</span>
+                  <td className="px-5 py-4 text-sm font-medium text-slate-600">{member.department ?? "—"}</td>
+                  <td className="px-5 py-4 text-sm font-semibold tabular text-slate-700">{member.activeTasks}</td>
+                  <td className="px-5 py-4 text-sm font-semibold tabular text-slate-700">{member.criticalTasks}</td>
+                  <td className="px-5 py-4 text-sm font-semibold tabular">
+                    <span className={member.overdueTasks > 0 ? "font-bold text-[#E31E24]" : "text-slate-700"}>{member.overdueTasks}</span>
                   </td>
-                  <td className="px-4 py-3">
-                    <span className={clsx("inline-flex items-center rounded-sm px-2 py-0.5 text-xs font-medium", workloadStyle[member.workload])}>
+                  <td className="px-5 py-4">
+                    <span className={clsx("inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold", workloadStyle[member.workload])}>
                       {member.workload}
                     </span>
                   </td>

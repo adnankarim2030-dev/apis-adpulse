@@ -62,9 +62,13 @@ const config: Config = {
         none: "none",
       },
       fontSize: {
-        xs: ["0.75rem", { lineHeight: "1.1rem" }],
-        sm: ["0.8125rem", { lineHeight: "1.25rem" }],
-        base: ["0.9375rem", { lineHeight: "1.45rem" }],
+        xs: ["0.8125rem", { lineHeight: "1.25rem" }],   // 13px
+        sm: ["0.9375rem", { lineHeight: "1.4rem" }],     // 15px
+        base: ["1rem", { lineHeight: "1.5rem" }],        // 16px
+        lg: ["1.125rem", { lineHeight: "1.75rem" }],     // 18px
+        xl: ["1.25rem", { lineHeight: "1.75rem" }],      // 20px
+        "2xl": ["1.5rem", { lineHeight: "2rem" }],       // 24px
+        "3xl": ["1.875rem", { lineHeight: "2.25rem" }],   // 30px
       },
     },
   },
