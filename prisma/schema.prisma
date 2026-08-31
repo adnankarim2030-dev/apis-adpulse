@@ -1,0 +1,210 @@
+// APIS — AdPulse Projects Intelligence System
+// Prisma schema — PHASE 1 (Foundation)
+//
+// This file implements only the tables needed for Phase 1:
+// users, clients, projects, project_members, tasks, activity_logs, login_attempts.
+//
+// The full target schema (milestones, task_dependencies, comments, attachments,
+// notifications, notification_rules, audit_logs, blockers, project_health,
+// workload_snapshots, ai_insights, settings, roles/permissions tables) is specified
+// in ARCHITECTURE.md and will be added incrementally in Phases 2-6 without breaking
+// this schema — every model below already carries the id/timestamps/soft-delete
+// conventions the later tables will follow.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum Role {
+  CEO
+  STAFF
+}
+
+enum Priority {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum ProjectStatus {
+  PLANNING
+  NOT_STARTED
+  IN_PROGRESS
+  ON_HOLD
+  AT_RISK
+  DELAYED
+  COMPLETED
+  CANCELLED
+}
+
+enum TaskStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  ON_HOLD
+  COMPLETED
+}
+
+// ---------------------------------------------------------------------------
+// Core models
+// ---------------------------------------------------------------------------
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         Role
+  department   String?
+  jobTitle     String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  managedProjects    Project[]       @relation("ProjectManager")
+  createdProjects    Project[]       @relation("ProjectCreatedBy")
+  projectMemberships ProjectMember[]
+  assignedTasks      Task[]          @relation("TaskAssignee")
+  createdTasks       Task[]          @relation("TaskCreatedBy")
+  activityLogs       ActivityLog[]
+  loginAttempts      LoginAttempt[]
+
+  @@index([role])
+  @@map("users")
+}
+
+model Client {
+  id            String   @id @default(uuid())
+  name          String
+  company       String?
+  contactPerson String?
+  email         String?
+  phone         String?
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  projects Project[]
+
+  @@map("clients")
+}
+
+model Project {
+  id                     String        @id @default(uuid())
+  name                   String
+  code                   String        @unique
+  clientId               String?
+  client                 Client?       @relation(fields: [clientId], references: [id])
+  projectManagerId       String?
+  projectManager         User?         @relation("ProjectManager", fields: [projectManagerId], references: [id])
+  department             String?
+  startDate              DateTime?
+  expectedCompletionDate DateTime?
+  priority               Priority      @default(MEDIUM)
+  status                 ProjectStatus @default(NOT_STARTED)
+  progressPercent        Int           @default(0)
+  description            String?
+  objectives             String?
+  createdById            String
+  createdBy              User          @relation("ProjectCreatedBy", fields: [createdById], references: [id])
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
+  deletedAt              DateTime?
+
+  members  ProjectMember[]
+  tasks    Task[]
+  activity ActivityLog[]
+
+  @@index([status])
+  @@index([priority])
+  @@index([deletedAt])
+  @@map("projects")
+}
+
+model ProjectMember {
+  id             String   @id @default(uuid())
+  projectId      String
+  project        Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roleOnProject  String?
+  addedAt        DateTime @default(now())
+
+  @@unique([projectId, userId])
+  @@map("project_members")
+}
+
+model Task {
+  id              String     @id @default(uuid())
+  projectId       String
+  project         Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title           String
+  description     String?
+  assignedToId    String?
+  assignedTo      User?      @relation("TaskAssignee", fields: [assignedToId], references: [id])
+  createdById     String
+  createdBy       User       @relation("TaskCreatedBy", fields: [createdById], references: [id])
+  priority        Priority   @default(MEDIUM)
+  status          TaskStatus @default(NOT_STARTED)
+  startDate       DateTime?
+  dueDate         DateTime?
+  estimatedHours  Float?
+  actualHours     Float?
+  progressPercent Int        @default(0)
+  completedAt     DateTime?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  deletedAt       DateTime?
+
+  activity ActivityLog[]
+
+  @@index([status])
+  @@index([assignedToId])
+  @@index([dueDate])
+  @@index([deletedAt])
+  @@map("tasks")
+}
+
+model ActivityLog {
+  id         String   @id @default(uuid())
+  entityType String // "PROJECT" | "TASK"
+  entityId   String
+  projectId  String?
+  project    Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  taskId     String?
+  task       Task?    @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  actorId    String
+  actor      User     @relation(fields: [actorId], references: [id])
+  action     String
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([projectId])
+  @@index([taskId])
+  @@index([createdAt])
+  @@map("activity_logs")
+}
+
+model LoginAttempt {
+  id        String   @id @default(uuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  email     String
+  success   Boolean
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  @@index([email])
+  @@index([createdAt])
+  @@map("login_attempts")
+}
