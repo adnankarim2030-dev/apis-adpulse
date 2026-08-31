@@ -27,31 +27,33 @@ export default async function CeoProjectsPage({ searchParams }: PageProps) {
 
   return (
     <AppShell role="CEO" activePath="/ceo/projects" name={session.name} title="Projects">
-      <div className="mb-5 flex items-center justify-between gap-4">
+      <div className="mb-6 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
         <form className="flex flex-1 flex-wrap items-center gap-2" method="get">
-          <Input name="search" defaultValue={searchParams.search} placeholder="Search by name or code" className="max-w-xs" />
-          <Select name="status" defaultValue={searchParams.status || ""} className="max-w-[160px]">
-            <option value="">All statuses</option>
-            {["PLANNING", "NOT_STARTED", "IN_PROGRESS", "ON_HOLD", "AT_RISK", "DELAYED", "COMPLETED", "CANCELLED"].map((s) => (
-              <option key={s} value={s}>
-                {s.replaceAll("_", " ")}
-              </option>
-            ))}
-          </Select>
-          <Select name="priority" defaultValue={searchParams.priority || ""} className="max-w-[140px]">
-            <option value="">All priorities</option>
-            {["CRITICAL", "HIGH", "MEDIUM", "LOW"].map((p) => (
-              <option key={p} value={p}>
-                {p}
-              </option>
-            ))}
-          </Select>
-          <Button type="submit" variant="secondary" size="sm">
-            Filter
-          </Button>
+          <Input name="search" defaultValue={searchParams.search} placeholder="Search by name or code" className="w-full sm:max-w-xs" />
+          <div className="flex w-full sm:w-auto items-center gap-2">
+            <Select name="status" defaultValue={searchParams.status || ""} className="flex-1 sm:max-w-[160px]">
+              <option value="">All statuses</option>
+              {["PLANNING", "NOT_STARTED", "IN_PROGRESS", "ON_HOLD", "AT_RISK", "DELAYED", "COMPLETED", "CANCELLED"].map((s) => (
+                <option key={s} value={s}>
+                  {s.replaceAll("_", " ")}
+                </option>
+              ))}
+            </Select>
+            <Select name="priority" defaultValue={searchParams.priority || ""} className="flex-1 sm:max-w-[140px]">
+              <option value="">All priorities</option>
+              {["CRITICAL", "HIGH", "MEDIUM", "LOW"].map((p) => (
+                <option key={p} value={p}>
+                  {p}
+                </option>
+              ))}
+            </Select>
+            <Button type="submit" variant="secondary" size="sm">
+              Filter
+            </Button>
+          </div>
         </form>
-        <Link href="/ceo/projects/new">
-          <Button>New Project</Button>
+        <Link href="/ceo/projects/new" className="self-end sm:self-auto">
+          <Button className="w-full sm:w-auto">+ New Project</Button>
         </Link>
       </div>
 

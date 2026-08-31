@@ -26,7 +26,7 @@ export default async function CeoDashboardPage() {
     <AppShell role="CEO" activePath="/ceo/dashboard" name={session.name} title="Dashboard">
       <div className="space-y-8">
         <section>
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-5 sm:gap-3.5">
             <KpiCard label="Active Projects" value={kpis.totalActiveProjects} />
             <KpiCard label="Completed" value={kpis.completedProjects} />
             <KpiCard label="At Risk / Delayed" value={kpis.atRiskProjects} tone={kpis.atRiskProjects > 0 ? "critical" : "default"} />
