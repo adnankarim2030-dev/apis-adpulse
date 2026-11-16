@@ -53,7 +53,7 @@ export default async function CeoDashboardPage() {
   const lateOrNeedsAttentionCount = kpis.atRiskProjects + (kpis.overdueProjects > 0 ? kpis.overdueProjects : 0);
 
   return (
-    <AppShell role="CEO" activePath="/ceo/dashboard" name={session.name} title="CEO Dashboard">
+    <AppShell role="CEO" activePath="/ceo/dashboard" name={session.name} userId={session.userId} title="CEO Dashboard">
       <div className="space-y-8">
         {/* 1. "Needs your attention" FIRST (Projects + Open Blockers) */}
         <section className="space-y-4">

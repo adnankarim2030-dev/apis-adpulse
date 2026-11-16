@@ -106,7 +106,7 @@ export default async function TotalTasksPage({ searchParams }: TasksPageProps) {
   ];
 
   return (
-    <AppShell role={session.role} activePath="/tasks" name={session.name} title="Task Status Hub">
+    <AppShell role={session.role} activePath="/tasks" name={session.name} userId={session.userId} title="Task Status Hub">
       <div className="space-y-6">
         {/* Header with Title and Add Task Modal */}
         <div className="rounded-card border border-border bg-surface p-5 md:p-6 shadow-soft flex flex-col sm:flex-row sm:items-center justify-between gap-4">

@@ -1,18 +1,21 @@
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Topbar } from "@/components/layout/Topbar";
 import { MobileTabBar } from "@/components/layout/MobileTabBar";
+import { GlobalChatPopup } from "@/components/chat/GlobalChatPopup";
 import type { Role } from "@/types";
 
 export function AppShell({
   role,
   activePath,
   name,
+  userId,
   title,
   children,
 }: {
   role: Role;
   activePath: string;
   name: string;
+  userId?: string;
   title: string;
   children: React.ReactNode;
 }) {
@@ -29,6 +32,9 @@ export function AppShell({
 
       {/* Mobile Fixed Bottom Navigation Bar */}
       <MobileTabBar role={role} activePath={activePath} />
+
+      {/* Real-time Global Chat Notification Popup & Quick Chat Drawer */}
+      <GlobalChatPopup currentUserName={name} currentUserId={userId} activePath={activePath} />
     </div>
   );
 }

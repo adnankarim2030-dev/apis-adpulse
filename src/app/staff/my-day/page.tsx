@@ -90,7 +90,7 @@ export default async function MyDayPage() {
   const totalPending = pendingTasks.length;
 
   return (
-    <AppShell role="STAFF" activePath="/staff/my-day" name={session.name} title="My Day">
+    <AppShell role="STAFF" activePath="/staff/my-day" name={session.name} userId={session.userId} title="My Day">
       <div className="space-y-6">
         {/* Friendly greeting line with prominent Add Task button */}
         <div className="rounded-card border border-border bg-surface p-5 md:p-6 shadow-soft flex flex-col sm:flex-row sm:items-center justify-between gap-4">

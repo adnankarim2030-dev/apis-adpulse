@@ -55,7 +55,7 @@ export default async function MyTasksPage({ searchParams }: PageProps) {
   ];
 
   return (
-    <AppShell role="STAFF" activePath="/staff/my-tasks" name={session.name} title="My Tasks">
+    <AppShell role="STAFF" activePath="/staff/my-tasks" name={session.name} userId={session.userId} title="My Tasks">
       <div className="space-y-6">
         {/* Header row with Filter Chips and Add Task Button */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
