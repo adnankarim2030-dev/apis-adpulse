@@ -16,9 +16,10 @@ export const createProjectSchema = z.object({
   name: z.string().min(2, "Project name is required"),
   code: z
     .string()
-    .min(2, "Project code is required")
+    .min(2, "Project code must be at least 2 characters")
     .max(20)
-    .regex(/^[A-Za-z0-9-]+$/, "Use letters, numbers and dashes only"),
+    .regex(/^[A-Za-z0-9-]+$/, "Use letters, numbers and dashes only")
+    .optional(),
   clientId: z.string().uuid().optional().nullable(),
   projectManagerId: z.string().uuid().optional().nullable(),
   department: z.string().max(100).optional().nullable(),

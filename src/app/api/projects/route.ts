@@ -40,9 +40,17 @@ export async function POST(request: NextRequest) {
       finalMemberIds = allUsers.map((u) => u.id);
     }
 
+    // Auto-generate code if omitted (e.g. from quick inline creation)
+    let finalCode = rest.code;
+    if (!finalCode) {
+      const prefix = rest.name.replace(/[^A-Za-z0-9]/g, "").slice(0, 4).toUpperCase() || "PROJ";
+      finalCode = `${prefix}-${Math.floor(1000 + Math.random() * 9000)}`;
+    }
+
     const project = await prisma.project.create({
       data: {
         ...rest,
+        code: finalCode,
         startDate: startDate ? new Date(startDate) : undefined,
         expectedCompletionDate: expectedCompletionDate ? new Date(expectedCompletionDate) : undefined,
         createdById: session.userId,
