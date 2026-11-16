@@ -13,8 +13,13 @@ export function Topbar({
   title: string;
 }) {
   return (
-    <header className="flex items-center justify-between border-b border-border bg-surface px-4 py-3 md:px-8">
-      <h1 className="text-lg md:text-xl font-bold text-text tracking-tight">{title}</h1>
+    <header className="flex items-center justify-between border-b border-border bg-surface px-4 py-3 md:px-8 shadow-xs">
+      <div className="flex items-center gap-3">
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#0B132B] p-1 md:hidden shadow-xs">
+          <img src="/adpulse-logo.png" alt="AdPulse" className="h-full w-full object-contain" />
+        </div>
+        <h1 className="text-lg md:text-xl font-bold text-text tracking-tight">{title}</h1>
+      </div>
       <div className="flex items-center gap-2 sm:gap-3">
         <InstallAppButton />
         <span className="hidden rounded-chip bg-primary-soft text-primary border border-primary-border/60 px-2.5 py-0.5 text-xs font-semibold sm:inline-block">

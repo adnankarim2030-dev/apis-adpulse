@@ -31,7 +31,7 @@ export function MobileTabBar({ role, activePath }: MobileTabBarProps) {
     ];
 
     return (
-      <nav className="fixed bottom-0 inset-x-0 z-40 bg-surface/95 backdrop-blur-md border-t border-border flex items-center justify-around px-1 py-1 md:hidden shadow-lg safe-bottom">
+      <nav className="fixed bottom-0 inset-x-0 z-40 bg-[#0B132B]/95 backdrop-blur-md border-t border-slate-800 flex items-center justify-around px-1 py-1 md:hidden shadow-xl safe-bottom">
         {ceoTabs.map((tab) => {
           const active = activePath === tab.href || activePath.startsWith(tab.href + "/");
           return (
@@ -39,7 +39,7 @@ export function MobileTabBar({ role, activePath }: MobileTabBarProps) {
               key={tab.href}
               href={tab.href}
               className={`flex flex-col items-center justify-center flex-1 min-h-[48px] py-1 text-[11px] font-semibold rounded-button transition-colors ${
-                active ? "text-primary font-bold" : "text-muted hover:text-text"
+                active ? "text-teal-400 font-bold" : "text-slate-400 hover:text-white"
               }`}
             >
               <span className="text-lg leading-none">{tab.icon}</span>
@@ -60,7 +60,7 @@ export function MobileTabBar({ role, activePath }: MobileTabBarProps) {
   ];
 
   return (
-    <nav className="fixed bottom-0 inset-x-0 z-40 bg-surface/95 backdrop-blur-md border-t border-border flex items-center justify-around px-1 py-1 md:hidden shadow-lg safe-bottom">
+    <nav className="fixed bottom-0 inset-x-0 z-40 bg-[#0B132B]/95 backdrop-blur-md border-t border-slate-800 flex items-center justify-around px-1 py-1 md:hidden shadow-xl safe-bottom">
       {staffTabs.map((tab) => {
         const active = activePath === tab.href || activePath.startsWith(tab.href + "/");
         return (
@@ -68,7 +68,7 @@ export function MobileTabBar({ role, activePath }: MobileTabBarProps) {
             key={tab.href}
             href={tab.href}
             className={`flex flex-col items-center justify-center flex-1 min-h-[48px] py-1 text-[11px] font-semibold rounded-button transition-colors ${
-              active ? "text-primary font-bold" : "text-muted hover:text-text"
+              active ? "text-teal-400 font-bold" : "text-slate-400 hover:text-white"
             }`}
           >
             <span className="text-lg leading-none">{tab.icon}</span>
@@ -80,7 +80,7 @@ export function MobileTabBar({ role, activePath }: MobileTabBarProps) {
       <button
         onClick={handleLogout}
         disabled={loggingOut}
-        className="flex flex-col items-center justify-center flex-1 min-h-[48px] py-1 text-[11px] font-semibold text-muted hover:text-danger-text transition-colors disabled:opacity-50"
+        className="flex flex-col items-center justify-center flex-1 min-h-[48px] py-1 text-[11px] font-semibold text-slate-400 hover:text-rose-400 transition-colors disabled:opacity-50"
       >
         <span className="text-lg leading-none">🚪</span>
         <span className="mt-1 leading-none">{loggingOut ? "…" : "Logout"}</span>

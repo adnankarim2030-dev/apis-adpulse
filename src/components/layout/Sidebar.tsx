@@ -22,20 +22,20 @@ export function Sidebar({ role, activePath }: { role: Role; activePath: string }
   const items = role === "CEO" ? ceoNav : staffNav;
 
   return (
-    <aside className="hidden w-64 shrink-0 flex-col border-r border-border bg-surface px-4 py-6 md:flex">
-      {/* Brand Header */}
-      <div className="flex items-center gap-3 px-2 pb-6">
-        <div className="flex h-10 w-10 items-center justify-center rounded-button bg-primary text-white font-bold text-lg shadow-sm">
-          A
+    <aside className="hidden w-64 shrink-0 flex-col border-r border-slate-800 bg-[#0B132B] px-4 py-6 md:flex text-white shadow-md">
+      {/* Brand Header with AdPulse Logo */}
+      <div className="flex items-center gap-3 px-2 pb-6 border-b border-slate-800/80">
+        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/10 p-1.5 shadow-inner border border-white/10">
+          <img src="/adpulse-logo.png" alt="AdPulse Logo" className="h-full w-full object-contain" />
         </div>
         <div>
-          <p className="font-bold text-lg tracking-tight text-text leading-tight">APIS</p>
-          <p className="text-xs text-subtle">AdPulse Management</p>
+          <p className="font-extrabold text-base tracking-tight text-white leading-tight">APIS</p>
+          <p className="text-[11px] font-semibold text-teal-400">AdPulse IMC</p>
         </div>
       </div>
 
       {/* Navigation Links */}
-      <nav className="flex flex-1 flex-col gap-1.5 pt-2">
+      <nav className="flex flex-1 flex-col gap-1.5 pt-4">
         {items.map((item) => {
           const active = activePath === item.href || (item.href !== "/" && activePath.startsWith(item.href + "/"));
           return (
@@ -44,8 +44,8 @@ export function Sidebar({ role, activePath }: { role: Role; activePath: string }
               href={item.href}
               className={`flex items-center gap-3 rounded-button px-3.5 py-2.5 text-sm font-semibold transition-all duration-150 min-h-[44px] ${
                 active
-                  ? "bg-primary-soft text-primary border border-primary-border shadow-xs"
-                  : "text-muted hover:bg-neutral hover:text-text border border-transparent"
+                  ? "bg-teal-600 text-white shadow-sm font-bold"
+                  : "text-slate-400 hover:bg-slate-800/70 hover:text-white"
               }`}
             >
               <span className="text-base">{item.icon}</span>
@@ -54,6 +54,15 @@ export function Sidebar({ role, activePath }: { role: Role; activePath: string }
           );
         })}
       </nav>
+
+      {/* Bottom Status Indicator */}
+      <div className="pt-4 border-t border-slate-800/80 px-2 flex items-center justify-between text-[11px] text-slate-500 font-medium">
+        <span>Phase 1 • Enterprise</span>
+        <span className="flex items-center gap-1.5 text-emerald-400 text-[10px]">
+          <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+          Live
+        </span>
+      </div>
     </aside>
   );
 }
