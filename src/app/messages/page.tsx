@@ -8,21 +8,14 @@ export default async function MessagesPage() {
   const session = await getSession();
   if (!session) redirect("/login");
 
-  const [projects, staffUsers] = await Promise.all([
-    prisma.project.findMany({
-      where: { deletedAt: null },
-      select: { id: true, name: true, code: true },
-      orderBy: { name: "asc" },
-    }),
-    prisma.user.findMany({
-      where: {
-        isActive: true,
-        id: { not: session.userId },
-      },
-      select: { id: true, name: true, jobTitle: true, department: true },
-      orderBy: { name: "asc" },
-    }),
-  ]);
+  const staffUsers = await prisma.user.findMany({
+    where: {
+      isActive: true,
+      id: { not: session.userId },
+    },
+    select: { id: true, name: true, jobTitle: true, department: true },
+    orderBy: { name: "asc" },
+  });
 
   const channels = [
     {
@@ -31,17 +24,11 @@ export default async function MessagesPage() {
       type: "GENERAL" as const,
       subtitle: "AdPulse company-wide discussion",
     },
-    ...projects.map((p) => ({
-      id: p.id,
-      name: p.name,
-      type: "PROJECT" as const,
-      subtitle: p.code,
-    })),
     ...staffUsers.map((s) => ({
       id: s.id,
       name: s.name,
       type: "DIRECT" as const,
-      subtitle: s.jobTitle || s.department || "Team Member",
+      subtitle: s.jobTitle || s.department || "Staff Member",
       avatarName: s.name,
     })),
   ];

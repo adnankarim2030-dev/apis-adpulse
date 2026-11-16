@@ -22,6 +22,7 @@ export function AddTaskForm({ projectId, members }: { projectId: string; members
     setError(null);
     setLoading(true);
     const formData = new FormData(event.currentTarget);
+    const startDate = formData.get("startDate");
     const dueDate = formData.get("dueDate");
 
     const payload = {
@@ -29,6 +30,7 @@ export function AddTaskForm({ projectId, members }: { projectId: string; members
       title: formData.get("title"),
       assignedToId: formData.get("assignedToId") || undefined,
       priority: formData.get("priority") || undefined,
+      startDate: startDate ? new Date(startDate as string).toISOString() : undefined,
       dueDate: dueDate ? new Date(dueDate as string).toISOString() : undefined,
       estimatedHours: formData.get("estimatedHours") ? Number(formData.get("estimatedHours")) : undefined,
     };
@@ -83,7 +85,7 @@ export function AddTaskForm({ projectId, members }: { projectId: string; members
           <Input id="title" name="title" required placeholder="e.g. Design homepage mockup" />
         </Field>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <Field label="Assign" htmlFor="assignedToId">
             <Select id="assignedToId" name="assignedToId" defaultValue="">
               <option value="">Unassigned</option>
@@ -95,7 +97,11 @@ export function AddTaskForm({ projectId, members }: { projectId: string; members
             </Select>
           </Field>
 
-          <Field label="Due date" htmlFor="dueDate">
+          <Field label="From (Start date)" htmlFor="startDate">
+            <Input id="startDate" name="startDate" type="date" />
+          </Field>
+
+          <Field label="To (Due date)" htmlFor="dueDate">
             <Input id="dueDate" name="dueDate" type="date" />
           </Field>
         </div>

@@ -118,7 +118,6 @@ export function ChatWorkbench({
   };
 
   const generalChannels = channels.filter((c) => c.type === "GENERAL");
-  const projectChannels = channels.filter((c) => c.type === "PROJECT");
   const directChannels = channels.filter((c) => c.type === "DIRECT");
 
   return (
@@ -126,8 +125,8 @@ export function ChatWorkbench({
       {/* Left Sidebar: Channels & Staff List */}
       <div className="md:col-span-4 border-r border-border bg-background/50 flex flex-col h-full max-h-[750px] overflow-hidden">
         <div className="p-4 border-b border-border bg-surface">
-          <h3 className="text-sm font-bold text-text">Team Chats & Channels</h3>
-          <p className="text-[11px] text-muted">Direct messaging and project groups</p>
+          <h3 className="text-sm font-bold text-text">Staff Direct Messages</h3>
+          <p className="text-[11px] text-muted">1-on-1 team chats & company discussion</p>
         </div>
 
         <div className="flex-1 overflow-y-auto p-2 space-y-4">
@@ -155,48 +154,11 @@ export function ChatWorkbench({
             })}
           </div>
 
-          {/* Project Groups */}
-          {projectChannels.length > 0 && (
-            <div className="space-y-1">
-              <p className="px-2.5 text-[10px] font-bold text-subtle uppercase tracking-wider">
-                Projects
-              </p>
-              {projectChannels.map((c) => {
-                const isActive = activeChannel.id === c.id;
-                return (
-                  <button
-                    key={c.id}
-                    onClick={() => setActiveChannel(c)}
-                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-button text-xs font-semibold transition-colors text-left min-h-[44px] ${
-                      isActive
-                        ? "bg-primary text-white shadow-xs"
-                        : "text-muted hover:bg-neutral hover:text-text"
-                    }`}
-                  >
-                    <span className="text-base">📁</span>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate">{c.name}</p>
-                      {c.subtitle && (
-                        <p
-                          className={`text-[10px] truncate ${
-                            isActive ? "text-white/80" : "text-subtle"
-                          }`}
-                        >
-                          {c.subtitle}
-                        </p>
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
           {/* Direct Staff Messages */}
           {directChannels.length > 0 && (
             <div className="space-y-1">
               <p className="px-2.5 text-[10px] font-bold text-subtle uppercase tracking-wider">
-                Direct Messages
+                Staff Members
               </p>
               {directChannels.map((c) => {
                 const isActive = activeChannel.id === c.id;
@@ -240,7 +202,7 @@ export function ChatWorkbench({
               <Avatar name={activeChannel.avatarName || activeChannel.name} size={36} />
             ) : (
               <div className="flex h-9 w-9 items-center justify-center rounded-button bg-primary-soft text-primary font-bold text-sm">
-                {activeChannel.type === "GENERAL" ? "📢" : "📁"}
+                📢
               </div>
             )}
             <div className="min-w-0">
@@ -249,7 +211,7 @@ export function ChatWorkbench({
                 {activeChannel.subtitle ||
                   (activeChannel.type === "GENERAL"
                     ? "Broadcast to all team members"
-                    : "Project discussion thread")}
+                    : "Staff direct conversation")}
               </p>
             </div>
           </div>

@@ -48,6 +48,7 @@ export function CreateTaskModal({
   const [title, setTitle] = useState("");
   const [projectId, setProjectId] = useState(projects[0]?.id || "");
   const [assignedToId, setAssignedToId] = useState(currentUserId || "");
+  const [startDate, setStartDate] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [priority, setPriority] = useState<"LOW" | "MEDIUM" | "HIGH" | "CRITICAL">("MEDIUM");
   const [estimatedHours, setEstimatedHours] = useState("");
@@ -108,13 +109,33 @@ export function CreateTaskModal({
     }
   };
 
-  const handleQuickDate = (daysFromNow: number) => {
-    const d = new Date();
-    d.setDate(d.getDate() + daysFromNow);
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, "0");
-    const dd = String(d.getDate()).padStart(2, "0");
-    setDueDate(`${yyyy}-${mm}-${dd}`);
+  const handlePresetDuration = (preset: "today" | "tomorrow" | "3days" | "1week") => {
+    const today = new Date();
+    const formatDate = (d: Date) => {
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      const dd = String(d.getDate()).padStart(2, "0");
+      return `${yyyy}-${mm}-${dd}`;
+    };
+
+    const startStr = formatDate(today);
+    setStartDate(startStr);
+
+    if (preset === "today") {
+      setDueDate(startStr);
+    } else if (preset === "tomorrow") {
+      const d = new Date(today);
+      d.setDate(d.getDate() + 1);
+      setDueDate(formatDate(d));
+    } else if (preset === "3days") {
+      const d = new Date(today);
+      d.setDate(d.getDate() + 3);
+      setDueDate(formatDate(d));
+    } else if (preset === "1week") {
+      const d = new Date(today);
+      d.setDate(d.getDate() + 7);
+      setDueDate(formatDate(d));
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -143,6 +164,10 @@ export function CreateTaskModal({
         payload.assignedToId = assignedToId;
       }
 
+      if (startDate) {
+        payload.startDate = new Date(`${startDate}T09:00:00Z`).toISOString();
+      }
+
       if (dueDate) {
         payload.dueDate = new Date(`${dueDate}T17:00:00Z`).toISOString();
       }
@@ -168,6 +193,7 @@ export function CreateTaskModal({
 
       setIsOpen(false);
       setTitle("");
+      setStartDate("");
       setDueDate("");
       setDescription("");
       setEstimatedHours("");
@@ -258,7 +284,7 @@ export function CreateTaskModal({
                   <button
                     type="button"
                     onClick={() => setShowAddProject(!showAddProject)}
-                    className="text-xs font-bold text-primary hover:text-primary-hover transition-colors flex items-center gap-1"
+                    className="text-sm font-extrabold text-teal-700 hover:text-teal-800 bg-teal-50 hover:bg-teal-100/90 px-3 py-1.5 rounded-lg border border-teal-300 transition-all flex items-center gap-1.5 shadow-xs"
                   >
                     <span>{showAddProject ? "✕ Cancel" : "+ New Project"}</span>
                   </button>
@@ -326,43 +352,68 @@ export function CreateTaskModal({
                 </select>
               </div>
 
-              {/* Due Date & Quick Presets */}
+              {/* Duration (Timeline: From & To) */}
               <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-text uppercase tracking-wider">
-                  Due Date
-                </label>
-                <input
-                  type="date"
-                  value={dueDate}
-                  onChange={(e) => setDueDate(e.target.value)}
-                  className="w-full rounded-input border border-border bg-background px-3.5 py-2.5 text-base text-text focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary min-h-[44px]"
-                />
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-semibold text-text uppercase tracking-wider">
+                    Duration (Timeline)
+                  </label>
+                  <span className="text-[11px] font-semibold text-subtle">From & To Dates</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-subtle uppercase mb-1">
+                      From (Start Date)
+                    </label>
+                    <input
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      className="w-full rounded-input border border-border bg-background px-3.5 py-2.5 text-base text-text focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary min-h-[44px]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-subtle uppercase mb-1">
+                      To (Due Date)
+                    </label>
+                    <input
+                      type="date"
+                      value={dueDate}
+                      onChange={(e) => setDueDate(e.target.value)}
+                      className="w-full rounded-input border border-border bg-background px-3.5 py-2.5 text-base text-text focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary min-h-[44px]"
+                    />
+                  </div>
+                </div>
+
                 <div className="flex flex-wrap gap-1.5 pt-1">
+                  <span className="text-[11px] font-semibold text-subtle self-center mr-1">Presets:</span>
                   <button
                     type="button"
-                    onClick={() => handleQuickDate(0)}
-                    className="text-xs px-2.5 py-1 rounded-chip border border-border bg-surface hover:bg-primary-soft hover:text-primary transition-colors"
+                    onClick={() => handlePresetDuration("today")}
+                    className="text-xs px-2.5 py-1 rounded-chip border border-border bg-surface hover:bg-primary-soft hover:text-primary transition-colors font-medium"
                   >
                     Today
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleQuickDate(1)}
-                    className="text-xs px-2.5 py-1 rounded-chip border border-border bg-surface hover:bg-primary-soft hover:text-primary transition-colors"
+                    onClick={() => handlePresetDuration("tomorrow")}
+                    className="text-xs px-2.5 py-1 rounded-chip border border-border bg-surface hover:bg-primary-soft hover:text-primary transition-colors font-medium"
                   >
                     Tomorrow
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleQuickDate(3)}
-                    className="text-xs px-2.5 py-1 rounded-chip border border-border bg-surface hover:bg-primary-soft hover:text-primary transition-colors"
+                    onClick={() => handlePresetDuration("3days")}
+                    className="text-xs px-2.5 py-1 rounded-chip border border-border bg-surface hover:bg-primary-soft hover:text-primary transition-colors font-medium"
                   >
                     In 3 Days
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleQuickDate(7)}
-                    className="text-xs px-2.5 py-1 rounded-chip border border-border bg-surface hover:bg-primary-soft hover:text-primary transition-colors"
+                    onClick={() => handlePresetDuration("1week")}
+                    className="text-xs px-2.5 py-1 rounded-chip border border-border bg-surface hover:bg-primary-soft hover:text-primary transition-colors font-medium"
                   >
                     Next Week
                   </button>
