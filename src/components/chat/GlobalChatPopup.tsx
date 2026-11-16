@@ -566,6 +566,40 @@ export function GlobalChatPopup({
                           />
                           <p className="text-[9px] opacity-75 font-semibold">📷 Image</p>
                         </div>
+                      ) : msg.content.startsWith("[FILE_ATTACHMENT]:") ? (
+                        (() => {
+                          let fileData = { name: "Cloud Attachment", size: "10 GB", url: "#" };
+                          try {
+                            fileData = JSON.parse(msg.content.replace("[FILE_ATTACHMENT]:", ""));
+                          } catch {}
+                          return (
+                            <div className="py-1 space-y-1.5 min-w-[190px]">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xl">
+                                  {fileData.name.match(/\.(mp4|mov|avi|mkv)$/i)
+                                    ? "🎥"
+                                    : fileData.name.match(/\.(zip|rar|7z|tar)$/i)
+                                    ? "🗜️"
+                                    : "📁"}
+                                </span>
+                                <div className="min-w-0 flex-1">
+                                  <p className="font-bold text-xs truncate" title={fileData.name}>
+                                    {fileData.name}
+                                  </p>
+                                  <p className="text-[10px] opacity-75">{fileData.size}</p>
+                                </div>
+                              </div>
+                              <a
+                                href={fileData.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs shadow-xs transition-colors w-full justify-center"
+                              >
+                                <span>📥 Download File</span>
+                              </a>
+                            </div>
+                          );
+                        })()
                       ) : msg.content.startsWith("data:video") ? (
                         <div className="py-0.5 space-y-1">
                           <video

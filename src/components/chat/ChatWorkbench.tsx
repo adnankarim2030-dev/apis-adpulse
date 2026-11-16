@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Avatar } from "@/components/ui/Avatar";
 import { friendlyDate } from "@/lib/format";
 import { WhatsAppVoiceCallModal, type ActiveCallState } from "@/components/chat/WhatsAppVoiceCallModal";
+import { CloudflareSetupModal } from "@/components/chat/CloudflareSetupModal";
 
 interface ChannelItem {
   id: string;
@@ -57,8 +58,10 @@ export function ChatWorkbench({
   // WhatsApp Style Audio Calling State
   const [activeCall, setActiveCall] = useState<ActiveCallState | null>(null);
 
-  // Images & Videos Attachment State
+  // Images, Videos & Cloudflare R2 Attachment State
   const [uploadingMedia, setUploadingMedia] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [showCloudModal, setShowCloudModal] = useState(false);
   const [selectedMedia, setSelectedMedia] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -242,22 +245,96 @@ export function ChatWorkbench({
     }
   };
 
-  // Handle Image & Video File Selection
+  // Format bytes helper for Cloud files
+  const formatBytes = (bytes: number) => {
+    if (bytes === 0) return "0 Bytes";
+    const k = 1024;
+    const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+  };
+
+  // Handle Image, Video & Heavy File (up to 10 GB) Selection
   const handleMediaSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     e.target.value = "";
 
+    // If file is > 3.5 MB (or heavy video/archive up to 10 GB):
+    // Use Cloudflare R2 direct presigned upload to bypass Vercel 4.5 MB serverless limit
+    if (file.size > 3.5 * 1024 * 1024) {
+      setUploadingMedia(true);
+      setUploadProgress(1);
+
+      try {
+        const presignRes = await fetch("/api/uploads/presign", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            fileName: file.name,
+            fileSize: file.size,
+            contentType: file.type || "application/octet-stream",
+          }),
+        });
+
+        const presignData = await presignRes.json();
+
+        if (presignData.configured && presignData.uploadUrl) {
+          // Direct Browser-to-Cloudflare R2 PUT upload
+          const xhr = new XMLHttpRequest();
+          xhr.open("PUT", presignData.uploadUrl, true);
+          xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream");
+
+          xhr.upload.onprogress = (evt) => {
+            if (evt.lengthComputable) {
+              const pct = Math.round((evt.loaded / evt.total) * 100);
+              setUploadProgress(pct);
+            }
+          };
+
+          xhr.onload = async () => {
+            setUploadingMedia(false);
+            setUploadProgress(0);
+            if (xhr.status >= 200 && xhr.status < 300) {
+              const payload = `[FILE_ATTACHMENT]:${JSON.stringify({
+                name: file.name,
+                size: formatBytes(file.size),
+                url: presignData.downloadUrl,
+              })}`;
+              await sendMediaMessage(payload);
+            } else {
+              alert("Direct upload to Cloudflare R2 failed. Please verify R2 bucket permissions.");
+            }
+          };
+
+          xhr.onerror = () => {
+            setUploadingMedia(false);
+            setUploadProgress(0);
+            alert("Network error during upload to Cloudflare R2.");
+          };
+
+          xhr.send(file);
+          return;
+        } else {
+          // R2 API keys not yet saved in environment, open setup modal & link sharer
+          setUploadingMedia(false);
+          setUploadProgress(0);
+          setShowCloudModal(true);
+          return;
+        }
+      } catch {
+        setUploadingMedia(false);
+        setUploadProgress(0);
+        setShowCloudModal(true);
+        return;
+      }
+    }
+
     const isImg = file.type.startsWith("image/");
     const isVid = file.type.startsWith("video/");
 
     if (!isImg && !isVid) {
-      alert("Please select a valid image (PNG, JPG, WEBP) or video file (MP4, WebM).");
-      return;
-    }
-
-    if (file.size > 25 * 1024 * 1024) {
-      alert("Direct in-chat attachments must be under 25 MB. For larger 10 GB files, please use a Cloud link.");
+      alert("Please select an image, video, or use the ☁️ 10 GB button for large files.");
       return;
     }
 
@@ -524,7 +601,17 @@ export function ChatWorkbench({
               const isAudio = msg.content.startsWith("data:audio");
               const isImage = msg.content.startsWith("data:image");
               const isVideo = msg.content.startsWith("data:video");
+              const isCloudFile = msg.content.startsWith("[FILE_ATTACHMENT]:");
               const isCallInvite = msg.content.includes("Started a Video Call") || msg.content.includes("Started a Voice Call") || msg.content.includes("Voice Call with");
+
+              let cloudFileData: { name: string; size: string; url: string } | null = null;
+              if (isCloudFile) {
+                try {
+                  cloudFileData = JSON.parse(msg.content.replace("[FILE_ATTACHMENT]:", ""));
+                } catch {
+                  cloudFileData = { name: "Cloud Attachment", size: "Heavy File", url: "#" };
+                }
+              }
 
               return (
                 <div
@@ -577,6 +664,34 @@ export function ChatWorkbench({
                           <p className={`text-[9px] font-semibold ${isMe ? "text-white/80" : "text-muted"}`}>
                             🎥 Video
                           </p>
+                        </div>
+                      ) : isCloudFile && cloudFileData ? (
+                        <div className="py-1 space-y-2 min-w-[220px]">
+                          <div className="flex items-center gap-2.5">
+                            <span className="text-2xl p-1.5 rounded-lg bg-teal-500/10 border border-teal-500/20">
+                              {cloudFileData.name.match(/\.(mp4|mov|avi|mkv)$/i)
+                                ? "🎥"
+                                : cloudFileData.name.match(/\.(zip|rar|7z|tar)$/i)
+                                ? "🗜️"
+                                : "📁"}
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              <p className={`font-extrabold text-xs truncate ${isMe ? "text-white" : "text-slate-900"}`} title={cloudFileData.name}>
+                                {cloudFileData.name}
+                              </p>
+                              <span className={`text-[10px] font-semibold ${isMe ? "text-teal-200" : "text-teal-700"}`}>
+                                {cloudFileData.size} • Cloudflare / Cloud File
+                              </span>
+                            </div>
+                          </div>
+                          <a
+                            href={cloudFileData.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold text-xs shadow-xs transition-colors w-full justify-center"
+                          >
+                            <span>📥 Download 10 GB File</span>
+                          </a>
                         </div>
                       ) : isCallInvite ? (
                         <div className="space-y-1.5 py-1">
@@ -643,12 +758,23 @@ export function ChatWorkbench({
             </div>
           ) : (
             /* Standard Input Bar with Mic & Attachment Buttons */
-            <form onSubmit={handleSendMessage} className="flex items-center gap-2">
+            <form onSubmit={handleSendMessage} className="flex items-center gap-2 relative">
+              {/* Upload Progress Bar if uploading heavy file to Cloudflare R2 */}
+              {uploadProgress > 0 && (
+                <div className="absolute -top-9 left-2 right-2 bg-gradient-to-r from-teal-900 to-slate-900 text-white text-[11px] font-bold px-3 py-1.5 rounded-xl flex items-center justify-between shadow-xl border border-teal-500/40 animate-pulse">
+                  <span className="flex items-center gap-1.5">
+                    <span className="animate-spin text-xs">⏳</span>
+                    <span>Uploading directly to Cloudflare R2...</span>
+                  </span>
+                  <span className="font-mono text-emerald-400 font-extrabold">{uploadProgress}%</span>
+                </div>
+              )}
+
               {/* Hidden file input for images & videos */}
               <input
                 type="file"
                 ref={fileInputRef}
-                accept="image/*,video/*"
+                accept="*/*"
                 className="hidden"
                 onChange={handleMediaSelect}
               />
@@ -658,10 +784,21 @@ export function ChatWorkbench({
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploadingMedia}
-                className="rounded-button bg-slate-100 hover:bg-slate-200 text-slate-700 text-base p-2.5 min-h-[44px] min-w-[44px] flex items-center justify-center transition-all border border-slate-200 shadow-xs cursor-pointer"
-                title="Send Image or Video (up to 25 MB)"
+                className="rounded-button bg-slate-100 hover:bg-slate-200 text-slate-700 text-base p-2.5 min-h-[44px] min-w-[44px] flex items-center justify-center transition-all border border-slate-200 shadow-xs cursor-pointer shrink-0"
+                title="Send Image, Video or File"
               >
                 {uploadingMedia ? <span className="animate-spin text-sm">⏳</span> : "📎"}
+              </button>
+
+              {/* ☁️ 10 GB Heavy File Button */}
+              <button
+                type="button"
+                onClick={() => setShowCloudModal(true)}
+                className="rounded-button bg-teal-50 hover:bg-teal-100 text-teal-800 text-xs font-bold px-2.5 min-h-[44px] flex items-center gap-1 transition-all border border-teal-200 shadow-xs cursor-pointer shrink-0"
+                title="Send Heavy File / 10 GB Video"
+              >
+                <span>☁️</span>
+                <span className="hidden sm:inline">10 GB</span>
               </button>
 
               <input
@@ -694,6 +831,20 @@ export function ChatWorkbench({
           )}
         </div>
       </div>
+
+      {/* Cloudflare Setup & 10 GB Link Modal */}
+      <CloudflareSetupModal
+        isOpen={showCloudModal}
+        onClose={() => setShowCloudModal(false)}
+        onSendLink={async (name, url, size) => {
+          const payload = `[FILE_ATTACHMENT]:${JSON.stringify({
+            name,
+            size: size || "10 GB",
+            url,
+          })}`;
+          await sendMediaMessage(payload);
+        }}
+      />
 
       {/* Full-Screen Lightbox Modal for Shared Images */}
       {selectedMedia && (
