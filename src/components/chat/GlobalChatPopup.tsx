@@ -74,7 +74,48 @@ export function GlobalChatPopup({
   const seenIdsRef = useRef<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Poll for incoming messages every 4 seconds
+  // Request browser Notification permission on mount
+  useEffect(() => {
+    if (typeof window !== "undefined" && "Notification" in window) {
+      if (Notification.permission === "default") {
+        Notification.requestPermission().catch(() => {});
+      }
+    }
+  }, []);
+
+  // Show Native OS Desktop / Mobile Notification (works even when window is minimized)
+  const showNativeNotification = useCallback((msg: IncomingMessage) => {
+    if (typeof window === "undefined" || !("Notification" in window)) return;
+    if (Notification.permission === "granted") {
+      const isVoice = msg.content.startsWith("data:audio");
+      const preview = isVoice ? "🎙️ Sent a voice note" : msg.content.slice(0, 90);
+
+      try {
+        const notif = new Notification(`${msg.senderName} (${msg.channelType === "DIRECT" ? "Direct Message" : "Team Chat"})`, {
+          body: preview,
+          icon: "/adpulse-logo.png",
+          badge: "/adpulse-logo.png",
+          tag: `apis-msg-${msg.id}`,
+        });
+
+        notif.onclick = () => {
+          window.focus();
+          setActivePopup(null);
+          setChatTarget({
+            id: msg.channelId,
+            name: msg.senderName,
+            title: msg.senderTitle,
+            type: msg.channelType,
+          });
+          setChatWindowOpen(true);
+          setUnreadCount(0);
+          notif.close();
+        };
+      } catch {}
+    }
+  }, []);
+
+  // Poll for incoming messages every 1.5 seconds
   const pollMessages = useCallback(async () => {
     try {
       const res = await fetch(`/api/messages/poll?since=${encodeURIComponent(lastCheckedRef.current)}`);
@@ -99,6 +140,9 @@ export function GlobalChatPopup({
             playChime();
           }
 
+          // Trigger Native OS Notification (appears on Windows desktop / mobile notification shade when minimized)
+          showNativeNotification(latest);
+
           // If chat window is open with this contact, append directly
           if (chatWindowOpen && chatTarget && chatTarget.id === latest.channelId) {
             setThreadMessages((prev) => [
@@ -117,7 +161,7 @@ export function GlobalChatPopup({
     } catch {
       // silent background polling
     }
-  }, [activePath, chatTarget, chatWindowOpen]);
+  }, [activePath, chatTarget, chatWindowOpen, showNativeNotification]);
 
   useEffect(() => {
     const timer = setInterval(pollMessages, 1500);
@@ -220,10 +264,10 @@ export function GlobalChatPopup({
 
   return (
     <>
-      {/* 1. TOAST NOTIFICATION POPUP (when someone sends a message) */}
+      {/* 1. CENTER NOTIFICATION POPUP (Centered on Desktop & Mobile Screen) */}
       {activePopup && (
-        <div className="fixed top-5 right-4 sm:right-6 z-50 max-w-sm w-full animate-in slide-in-from-top-4 fade-in duration-300">
-          <div className="rounded-2xl border-2 border-teal-500/30 bg-white/95 backdrop-blur-md p-4 shadow-2xl flex items-start gap-3.5 ring-1 ring-black/5">
+        <div className="fixed top-4 md:top-6 left-1/2 -translate-x-1/2 z-50 w-[94vw] max-w-md animate-in slide-in-from-top-4 fade-in duration-300 drop-shadow-2xl">
+          <div className="rounded-2xl border-2 border-teal-500/40 bg-white/98 backdrop-blur-md p-4 shadow-2xl flex items-start gap-3.5 ring-2 ring-teal-500/10">
             <div className="relative shrink-0">
               <Avatar name={activePopup.senderName} size={42} />
               <span className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full bg-emerald-500 border-2 border-white ring-1 ring-emerald-400" />
