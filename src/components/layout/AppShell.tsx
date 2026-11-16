@@ -17,8 +17,8 @@ export function AppShell({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-screen bg-background">
-      {/* Desktop Light Sidebar */}
+    <div className="flex min-h-screen bg-gradient-to-br from-[#F8FAFC] via-[#F1F5F9] to-[#E2E8F0]">
+      {/* Desktop Light/Dark Gradient Sidebar */}
       <Sidebar role={role} activePath={activePath} />
 
       {/* Main Content Area */}
