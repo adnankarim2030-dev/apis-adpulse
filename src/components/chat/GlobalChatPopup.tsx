@@ -120,7 +120,7 @@ export function GlobalChatPopup({
   }, [activePath, chatTarget, chatWindowOpen]);
 
   useEffect(() => {
-    const timer = setInterval(pollMessages, 4000);
+    const timer = setInterval(pollMessages, 1500);
     return () => clearInterval(timer);
   }, [pollMessages]);
 
@@ -344,7 +344,17 @@ export function GlobalChatPopup({
                           {msg.senderName}
                         </p>
                       )}
-                      <p className="break-words leading-relaxed">{msg.content}</p>
+                      {msg.content.startsWith("data:audio") ? (
+                        <div className="flex flex-col gap-1 py-0.5">
+                          <span className="text-[10px] font-bold opacity-80 flex items-center gap-1">
+                            <span>🎙️</span>
+                            <span>Voice Note</span>
+                          </span>
+                          <audio controls src={msg.content} className="max-w-[200px] h-7" />
+                        </div>
+                      ) : (
+                        <p className="break-words leading-relaxed">{msg.content}</p>
+                      )}
                     </div>
                     <span className="text-[9px] text-slate-400 mt-0.5 px-1 font-medium">
                       {friendlyDate(msg.createdAt)}
