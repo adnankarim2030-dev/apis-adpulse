@@ -310,7 +310,7 @@ export function CreateTaskModal({
               {/* Assignee Selection (Myself + All Staff Members) */}
               <div>
                 <label className="block text-xs font-semibold text-text uppercase tracking-wider mb-1.5">
-                  Assign To (Kis ko assign karna hai)
+                  Assign
                 </label>
                 <select
                   value={assignedToId}
