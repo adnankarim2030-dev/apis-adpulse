@@ -11,10 +11,22 @@ import { listStaffWithWorkload } from "@/lib/queries/staff";
 export async function GET() {
   try {
     const session = requireSession(await getSession());
-    requireRole(session, ["CEO"]);
 
-    const data = await listStaffWithWorkload();
-    return NextResponse.json({ data });
+    // Both CEO and STAFF need to see the staff roster for assigning tasks and team collaboration
+    const staff = await prisma.user.findMany({
+      where: { isActive: true },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        department: true,
+        jobTitle: true,
+        role: true,
+      },
+      orderBy: { name: "asc" },
+    });
+
+    return NextResponse.json({ data: staff });
   } catch (error) {
     return handleApiError(error);
   }

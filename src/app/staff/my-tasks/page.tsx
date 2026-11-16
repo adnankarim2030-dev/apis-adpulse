@@ -19,7 +19,7 @@ export default async function MyTasksPage({ searchParams }: PageProps) {
 
   const currentFilter = searchParams.status || "ALL";
 
-  const [tasks, userProjects] = await Promise.all([
+  const [tasks, userProjects, allStaff] = await Promise.all([
     listTasks(session, {
       status: currentFilter === "ALL" ? undefined : currentFilter,
     }),
@@ -29,6 +29,11 @@ export default async function MyTasksPage({ searchParams }: PageProps) {
         members: { some: { userId: session.userId } },
       },
       select: { id: true, name: true, code: true },
+      orderBy: { name: "asc" },
+    }),
+    prisma.user.findMany({
+      where: { isActive: true },
+      select: { id: true, name: true, jobTitle: true, department: true },
       orderBy: { name: "asc" },
     }),
   ]);
@@ -74,7 +79,7 @@ export default async function MyTasksPage({ searchParams }: PageProps) {
           </div>
 
           <div className="shrink-0">
-            <CreateTaskModal projects={availableProjects} />
+            <CreateTaskModal projects={availableProjects} staffList={allStaff} currentUserId={session.userId} />
           </div>
         </div>
 
@@ -87,7 +92,7 @@ export default async function MyTasksPage({ searchParams }: PageProps) {
               Nothing matches your current filter. You can add a new task right now.
             </p>
             <div className="pt-2 flex justify-center">
-              <CreateTaskModal projects={availableProjects} buttonLabel="+ Add Task" />
+              <CreateTaskModal projects={availableProjects} staffList={allStaff} currentUserId={session.userId} buttonLabel="+ Add Task" />
             </div>
           </div>
         ) : (

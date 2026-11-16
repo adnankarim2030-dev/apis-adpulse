@@ -40,6 +40,11 @@ export function CreateTaskModal({
   const [toast, setToast] = useState<{ message: string; type?: "success" | "error" } | null>(null);
 
   const [staffList, setStaffList] = useState<StaffOption[]>(initialStaffList || []);
+  const [projectList, setProjectList] = useState<ProjectOption[]>(projects);
+  const [showAddProject, setShowAddProject] = useState(false);
+  const [newProjectName, setNewProjectName] = useState("");
+  const [creatingProject, setCreatingProject] = useState(false);
+
   const [title, setTitle] = useState("");
   const [projectId, setProjectId] = useState(projects[0]?.id || "");
   const [assignedToId, setAssignedToId] = useState(currentUserId || "");
@@ -47,6 +52,13 @@ export function CreateTaskModal({
   const [priority, setPriority] = useState<"LOW" | "MEDIUM" | "HIGH" | "CRITICAL">("MEDIUM");
   const [estimatedHours, setEstimatedHours] = useState("");
   const [description, setDescription] = useState("");
+
+  useEffect(() => {
+    setProjectList(projects);
+    if (!projectId && projects.length > 0) {
+      setProjectId(projects[0]!.id);
+    }
+  }, [projects]);
 
   // Fetch staff list if not provided
   useEffect(() => {
@@ -61,6 +73,40 @@ export function CreateTaskModal({
         .catch(() => {});
     }
   }, [isOpen, staffList.length]);
+
+  const handleCreateProject = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!newProjectName.trim()) return;
+    try {
+      setCreatingProject(true);
+      const code = `ADP-${new Date().getFullYear()}-${String(projectList.length + 1).padStart(2, "0")}`;
+      const res = await fetch("/api/projects", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: newProjectName.trim(),
+          code,
+          status: "IN_PROGRESS",
+          priority: "MEDIUM",
+        }),
+      });
+      if (res.ok) {
+        const result = await res.json();
+        const created = result.data;
+        setProjectList((prev) => [created, ...prev]);
+        setProjectId(created.id);
+        setNewProjectName("");
+        setShowAddProject(false);
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        setError(errData.error || "Failed to create project");
+      }
+    } catch {
+      setError("Failed to create project. Please try again.");
+    } finally {
+      setCreatingProject(false);
+    }
+  };
 
   const handleQuickDate = (daysFromNow: number) => {
     const d = new Date();
@@ -203,23 +249,56 @@ export function CreateTaskModal({
                 />
               </div>
 
-              {/* Project Selection */}
+              {/* Project Selection with inline + New Project */}
               <div>
-                <label className="block text-xs font-semibold text-text uppercase tracking-wider mb-1.5">
-                  Project *
-                </label>
-                {projects.length === 0 ? (
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-semibold text-text uppercase tracking-wider">
+                    Project *
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddProject(!showAddProject)}
+                    className="text-xs font-bold text-primary hover:text-primary-hover transition-colors flex items-center gap-1"
+                  >
+                    <span>{showAddProject ? "✕ Cancel" : "+ New Project"}</span>
+                  </button>
+                </div>
+
+                {showAddProject && (
+                  <div className="mb-2 p-3 rounded-button bg-primary-soft border border-primary-border space-y-2 animate-in fade-in duration-100">
+                    <p className="text-xs font-bold text-text">Add New Project Name:</p>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={newProjectName}
+                        onChange={(e) => setNewProjectName(e.target.value)}
+                        placeholder="e.g. Edenrobe Summer Campaign"
+                        className="flex-1 rounded-input border border-border bg-surface px-3 py-1.5 text-sm text-text placeholder:text-subtle focus:border-primary focus:outline-none"
+                      />
+                      <button
+                        type="button"
+                        disabled={creatingProject || !newProjectName.trim()}
+                        onClick={handleCreateProject}
+                        className="rounded-button bg-primary hover:bg-primary-hover text-white text-xs font-bold px-3 py-1.5 transition-colors disabled:opacity-50"
+                      >
+                        {creatingProject ? "Adding…" : "Add Project"}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {projectList.length === 0 ? (
                   <p className="text-xs text-danger-text bg-danger-soft p-2.5 rounded-button border border-danger-text/20">
-                    No active projects found.
+                    No active projects found. Click &quot;+ New Project&quot; above to create one.
                   </p>
                 ) : (
                   <select
                     required
-                    value={projectId || projects[0]?.id || ""}
+                    value={projectId || projectList[0]?.id || ""}
                     onChange={(e) => setProjectId(e.target.value)}
                     className="w-full rounded-input border border-border bg-background px-3.5 py-2.5 text-base text-text focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary min-h-[44px]"
                   >
-                    {projects.map((p) => (
+                    {projectList.map((p) => (
                       <option key={p.id} value={p.id}>
                         {p.name} {p.code ? `(${p.code})` : ""}
                       </option>
@@ -228,7 +307,7 @@ export function CreateTaskModal({
                 )}
               </div>
 
-              {/* Assignee Selection (PM & Staff Task Delegation) */}
+              {/* Assignee Selection (Myself + All Staff Members) */}
               <div>
                 <label className="block text-xs font-semibold text-text uppercase tracking-wider mb-1.5">
                   Assign To (Kis ko assign karna hai)
@@ -238,10 +317,10 @@ export function CreateTaskModal({
                   onChange={(e) => setAssignedToId(e.target.value)}
                   className="w-full rounded-input border border-border bg-background px-3.5 py-2.5 text-base text-text focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary min-h-[44px]"
                 >
-                  <option value="">Assign to Me (Myself)</option>
+                  <option value="">Myself (Self Assigned)</option>
                   {staffList.map((s) => (
                     <option key={s.id} value={s.id}>
-                      {s.name} {s.jobTitle ? `(${s.jobTitle})` : ""}
+                      {s.name} {s.jobTitle ? `— ${s.jobTitle}` : s.department ? `— ${s.department}` : ""}
                     </option>
                   ))}
                 </select>

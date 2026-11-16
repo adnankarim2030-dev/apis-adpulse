@@ -21,7 +21,7 @@ export default async function MyDayPage() {
   if (!session) redirect("/login");
   if (session.role === "CEO") redirect("/ceo/dashboard");
 
-  const [{ tasks }, pendingRequests, blockers, userProjects] = await Promise.all([
+  const [{ tasks }, pendingRequests, blockers, userProjects, allStaff] = await Promise.all([
     getStaffDashboardData(session),
     prisma.statusRequest.findMany({
       where: { requestedToId: session.userId, status: "PENDING" },
@@ -42,6 +42,11 @@ export default async function MyDayPage() {
         members: { some: { userId: session.userId } },
       },
       select: { id: true, name: true, code: true },
+      orderBy: { name: "asc" },
+    }),
+    prisma.user.findMany({
+      where: { isActive: true },
+      select: { id: true, name: true, jobTitle: true, department: true },
       orderBy: { name: "asc" },
     }),
   ]);
@@ -105,7 +110,7 @@ export default async function MyDayPage() {
           </div>
 
           <div className="shrink-0">
-            <CreateTaskModal projects={availableProjects} />
+            <CreateTaskModal projects={availableProjects} staffList={allStaff} currentUserId={session.userId} />
           </div>
         </div>
 
@@ -137,7 +142,7 @@ export default async function MyDayPage() {
               No pending tasks assigned to you right now. Take a breather or create a new task to work on.
             </p>
             <div className="pt-2 flex justify-center">
-              <CreateTaskModal projects={availableProjects} buttonLabel="+ Add New Task" />
+              <CreateTaskModal projects={availableProjects} staffList={allStaff} currentUserId={session.userId} buttonLabel="+ Add New Task" />
             </div>
           </div>
         ) : (

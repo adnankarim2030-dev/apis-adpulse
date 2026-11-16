@@ -28,11 +28,17 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const session = requireSession(await getSession());
-    requireRole(session, ["CEO"]);
 
     const body = await request.json();
     const input = createProjectSchema.parse(body);
     const { memberIds, startDate, expectedCompletionDate, ...rest } = input;
+
+    // If memberIds not provided, automatically include all active team members
+    let finalMemberIds = memberIds;
+    if (!finalMemberIds || finalMemberIds.length === 0) {
+      const allUsers = await prisma.user.findMany({ where: { isActive: true }, select: { id: true } });
+      finalMemberIds = allUsers.map((u) => u.id);
+    }
 
     const project = await prisma.project.create({
       data: {
@@ -40,9 +46,9 @@ export async function POST(request: NextRequest) {
         startDate: startDate ? new Date(startDate) : undefined,
         expectedCompletionDate: expectedCompletionDate ? new Date(expectedCompletionDate) : undefined,
         createdById: session.userId,
-        members: memberIds?.length
-          ? { create: memberIds.map((userId) => ({ userId })) }
-          : undefined,
+        members: {
+          create: finalMemberIds.map((userId) => ({ userId })),
+        },
       },
       include: { members: true },
     });
