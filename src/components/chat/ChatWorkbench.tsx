@@ -57,6 +57,11 @@ export function ChatWorkbench({
   // WhatsApp Style Audio Calling State
   const [activeCall, setActiveCall] = useState<ActiveCallState | null>(null);
 
+  // Images & Videos Attachment State
+  const [uploadingMedia, setUploadingMedia] = useState(false);
+  const [selectedMedia, setSelectedMedia] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Fast 1.5s Polling for live messages
@@ -237,6 +242,108 @@ export function ChatWorkbench({
     }
   };
 
+  // Handle Image & Video File Selection
+  const handleMediaSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+
+    const isImg = file.type.startsWith("image/");
+    const isVid = file.type.startsWith("video/");
+
+    if (!isImg && !isVid) {
+      alert("Please select a valid image (PNG, JPG, WEBP) or video file (MP4, WebM).");
+      return;
+    }
+
+    if (file.size > 25 * 1024 * 1024) {
+      alert("Direct in-chat attachments must be under 25 MB. For larger 10 GB files, please use a Cloud link.");
+      return;
+    }
+
+    setUploadingMedia(true);
+
+    try {
+      if (isImg && file.size > 1.2 * 1024 * 1024) {
+        // High-res image compression via canvas
+        const img = document.createElement("img");
+        const objUrl = URL.createObjectURL(file);
+        img.src = objUrl;
+
+        await new Promise((resolve) => {
+          img.onload = resolve;
+        });
+
+        const canvas = document.createElement("canvas");
+        const maxDim = 1600;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx?.drawImage(img, 0, 0, width, height);
+
+        const compressedData = canvas.toDataURL("image/jpeg", 0.84);
+        URL.revokeObjectURL(objUrl);
+        await sendMediaMessage(compressedData);
+      } else {
+        const reader = new FileReader();
+        reader.onloadend = async () => {
+          const result = reader.result as string;
+          await sendMediaMessage(result);
+        };
+        reader.readAsDataURL(file);
+      }
+    } catch {
+      alert("Failed to process media file.");
+    } finally {
+      setUploadingMedia(false);
+    }
+  };
+
+  const sendMediaMessage = async (base64Content: string) => {
+    const tempId = `temp-${Date.now()}`;
+    const optimisticMsg: MessageItem = {
+      id: tempId,
+      senderId: currentUserId,
+      senderName: currentUserName,
+      content: base64Content,
+      createdAt: new Date().toISOString(),
+      channelId: activeChannel.id,
+    };
+
+    setMessages((prev) => [...prev, optimisticMsg]);
+
+    try {
+      const res = await fetch("/api/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          channelType: activeChannel.type,
+          channelId: activeChannel.id,
+          content: base64Content,
+        }),
+      });
+      if (res.ok) {
+        const body = await res.json();
+        setMessages((prev) =>
+          prev.map((m) => (m.id === tempId ? body.data : m))
+        );
+      }
+    } catch {}
+  };
+
   // Start WhatsApp Style In-App Voice Call
   const initiateCall = async (mode: "audio" | "video") => {
     const callId = `call-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -415,7 +522,9 @@ export function ChatWorkbench({
             messages.map((msg) => {
               const isMe = msg.senderId === currentUserId;
               const isAudio = msg.content.startsWith("data:audio");
-              const isCallInvite = msg.content.includes("Started a Video Call") || msg.content.includes("Started a Voice Call");
+              const isImage = msg.content.startsWith("data:image");
+              const isVideo = msg.content.startsWith("data:video");
+              const isCallInvite = msg.content.includes("Started a Video Call") || msg.content.includes("Started a Voice Call") || msg.content.includes("Voice Call with");
 
               return (
                 <div
@@ -445,6 +554,29 @@ export function ChatWorkbench({
                             <span>Voice Note</span>
                           </span>
                           <audio controls src={msg.content} className="max-w-[220px] sm:max-w-[260px] h-8" />
+                        </div>
+                      ) : isImage ? (
+                        <div className="py-1 space-y-1">
+                          <img
+                            src={msg.content}
+                            alt="Photo"
+                            onClick={() => setSelectedMedia(msg.content)}
+                            className="max-w-[240px] sm:max-w-[320px] max-h-[300px] object-cover rounded-xl shadow-md border border-slate-200/50 cursor-pointer hover:opacity-90 transition-opacity"
+                          />
+                          <p className={`text-[9px] font-semibold ${isMe ? "text-white/80" : "text-muted"}`}>
+                            📷 Image (Click to enlarge)
+                          </p>
+                        </div>
+                      ) : isVideo ? (
+                        <div className="py-1 space-y-1">
+                          <video
+                            controls
+                            src={msg.content}
+                            className="max-w-[240px] sm:max-w-[320px] max-h-[260px] rounded-xl shadow-md border border-slate-200/50"
+                          />
+                          <p className={`text-[9px] font-semibold ${isMe ? "text-white/80" : "text-muted"}`}>
+                            🎥 Video
+                          </p>
                         </div>
                       ) : isCallInvite ? (
                         <div className="space-y-1.5 py-1">
@@ -510,8 +642,28 @@ export function ChatWorkbench({
               </div>
             </div>
           ) : (
-            /* Standard Input Bar with Mic Button */
+            /* Standard Input Bar with Mic & Attachment Buttons */
             <form onSubmit={handleSendMessage} className="flex items-center gap-2">
+              {/* Hidden file input for images & videos */}
+              <input
+                type="file"
+                ref={fileInputRef}
+                accept="image/*,video/*"
+                className="hidden"
+                onChange={handleMediaSelect}
+              />
+
+              {/* 📎 Attach Image / Video Button */}
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadingMedia}
+                className="rounded-button bg-slate-100 hover:bg-slate-200 text-slate-700 text-base p-2.5 min-h-[44px] min-w-[44px] flex items-center justify-center transition-all border border-slate-200 shadow-xs cursor-pointer"
+                title="Send Image or Video (up to 25 MB)"
+              >
+                {uploadingMedia ? <span className="animate-spin text-sm">⏳</span> : "📎"}
+              </button>
+
               <input
                 type="text"
                 value={inputText}
@@ -533,7 +685,7 @@ export function ChatWorkbench({
               {/* Send Button */}
               <button
                 type="submit"
-                disabled={!inputText.trim() || sending}
+                disabled={!inputText.trim() || sending || uploadingMedia}
                 className="rounded-button bg-primary hover:bg-primary-hover text-white text-xs font-bold px-5 py-2.5 min-h-[44px] shadow-sm transition-all active:scale-[0.98] disabled:opacity-40 shrink-0"
               >
                 {sending ? "..." : "Send"}
@@ -542,6 +694,47 @@ export function ChatWorkbench({
           )}
         </div>
       </div>
+
+      {/* Full-Screen Lightbox Modal for Shared Images */}
+      {selectedMedia && (
+        <div
+          className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200"
+          onClick={() => setSelectedMedia(null)}
+        >
+          <div
+            className="relative max-w-4xl max-h-[90vh] flex flex-col items-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-full flex items-center justify-between pb-3 text-white">
+              <span className="text-xs font-bold bg-white/10 px-3 py-1 rounded-full">
+                Preview Shared Media
+              </span>
+              <div className="flex items-center gap-2">
+                <a
+                  href={selectedMedia}
+                  download="shared-media.jpg"
+                  className="text-xs font-bold bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1"
+                >
+                  <span>📥</span>
+                  <span>Download</span>
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setSelectedMedia(null)}
+                  className="text-slate-300 hover:text-white text-lg px-2 py-1 rounded-lg hover:bg-white/10 transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+            <img
+              src={selectedMedia}
+              alt="Full preview"
+              className="max-h-[80vh] max-w-full rounded-2xl shadow-2xl object-contain border border-white/10"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

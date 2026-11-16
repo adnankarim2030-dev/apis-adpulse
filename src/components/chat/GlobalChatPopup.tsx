@@ -72,6 +72,9 @@ export function GlobalChatPopup({
   const [loadingThread, setLoadingThread] = useState(false);
   const [inputText, setInputText] = useState("");
   const [sending, setSending] = useState(false);
+  const [popupUploading, setPopupUploading] = useState(false);
+  const [selectedPopupMedia, setSelectedPopupMedia] = useState<string | null>(null);
+  const popupFileInputRef = useRef<HTMLInputElement>(null);
 
   const lastCheckedRef = useRef<string>(new Date(Date.now() - 5000).toISOString());
   const seenIdsRef = useRef<Set<string>>(new Set());
@@ -284,6 +287,105 @@ export function GlobalChatPopup({
     }
   };
 
+  // Handle Image/Video attachment in floating quick drawer
+  const handlePopupMediaSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !chatTarget) return;
+    e.target.value = "";
+
+    const isImg = file.type.startsWith("image/");
+    const isVid = file.type.startsWith("video/");
+
+    if (!isImg && !isVid) {
+      alert("Please select a valid image or video.");
+      return;
+    }
+
+    if (file.size > 25 * 1024 * 1024) {
+      alert("Direct in-chat attachments must be under 25 MB.");
+      return;
+    }
+
+    setPopupUploading(true);
+    try {
+      if (isImg && file.size > 1.2 * 1024 * 1024) {
+        const img = document.createElement("img");
+        const objUrl = URL.createObjectURL(file);
+        img.src = objUrl;
+
+        await new Promise((resolve) => {
+          img.onload = resolve;
+        });
+
+        const canvas = document.createElement("canvas");
+        const maxDim = 1400;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx?.drawImage(img, 0, 0, width, height);
+
+        const compressed = canvas.toDataURL("image/jpeg", 0.82);
+        URL.revokeObjectURL(objUrl);
+        await sendPopupMedia(compressed);
+      } else {
+        const reader = new FileReader();
+        reader.onloadend = async () => {
+          await sendPopupMedia(reader.result as string);
+        };
+        reader.readAsDataURL(file);
+      }
+    } catch {
+      alert("Failed to process media file.");
+    } finally {
+      setPopupUploading(false);
+    }
+  };
+
+  const sendPopupMedia = async (base64Media: string) => {
+    if (!chatTarget) return;
+    const tempId = `temp-${Date.now()}`;
+    const optimistic: MessageThreadItem = {
+      id: tempId,
+      senderId: currentUserId || "me",
+      senderName: currentUserName || "Me",
+      content: base64Media,
+      createdAt: new Date().toISOString(),
+    };
+
+    setThreadMessages((prev) => [...prev, optimistic]);
+
+    try {
+      const res = await fetch("/api/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          channelType: chatTarget.type,
+          channelId: chatTarget.id,
+          content: base64Media,
+        }),
+      });
+      if (res.ok) {
+        const body = await res.json();
+        setThreadMessages((prev) =>
+          prev.map((m) => (m.id === tempId ? body.data : m))
+        );
+      }
+    } catch {}
+  };
+
   return (
     <>
       {/* 1. CENTER NOTIFICATION POPUP (Centered on Desktop & Mobile Screen) */}
@@ -454,6 +556,25 @@ export function GlobalChatPopup({
                           </span>
                           <audio controls src={msg.content} className="max-w-[200px] h-7" />
                         </div>
+                      ) : msg.content.startsWith("data:image") ? (
+                        <div className="py-0.5 space-y-1">
+                          <img
+                            src={msg.content}
+                            alt="Shared"
+                            onClick={() => setSelectedPopupMedia(msg.content)}
+                            className="max-w-[200px] sm:max-w-[260px] max-h-[220px] object-cover rounded-xl shadow-xs cursor-pointer hover:opacity-90"
+                          />
+                          <p className="text-[9px] opacity-75 font-semibold">📷 Image</p>
+                        </div>
+                      ) : msg.content.startsWith("data:video") ? (
+                        <div className="py-0.5 space-y-1">
+                          <video
+                            controls
+                            src={msg.content}
+                            className="max-w-[200px] sm:max-w-[260px] max-h-[180px] rounded-xl shadow-xs"
+                          />
+                          <p className="text-[9px] opacity-75 font-semibold">🎥 Video</p>
+                        </div>
                       ) : (
                         <p className="break-words leading-relaxed">{msg.content}</p>
                       )}
@@ -468,8 +589,27 @@ export function GlobalChatPopup({
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Input Form */}
-          <form onSubmit={handleSendMessage} className="p-2.5 bg-white border-t border-slate-200 flex gap-2 shrink-0">
+          {/* Input Form with Attachment Button */}
+          <form onSubmit={handleSendMessage} className="p-2.5 bg-white border-t border-slate-200 flex items-center gap-1.5 shrink-0">
+            {/* Hidden file input */}
+            <input
+              type="file"
+              ref={popupFileInputRef}
+              accept="image/*,video/*"
+              className="hidden"
+              onChange={handlePopupMediaSelect}
+            />
+
+            <button
+              type="button"
+              onClick={() => popupFileInputRef.current?.click()}
+              disabled={popupUploading}
+              className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm flex items-center justify-center transition-colors border border-slate-200"
+              title="Attach Image or Video (up to 25 MB)"
+            >
+              {popupUploading ? <span className="animate-spin text-xs">⏳</span> : "📎"}
+            </button>
+
             <input
               type="text"
               value={inputText}
@@ -479,12 +619,40 @@ export function GlobalChatPopup({
             />
             <button
               type="submit"
-              disabled={sending || !inputText.trim()}
+              disabled={sending || !inputText.trim() || popupUploading}
               className="rounded-xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white px-3.5 py-2 text-xs font-bold transition-all disabled:opacity-40 shadow-xs shrink-0 flex items-center justify-center"
             >
               {sending ? "…" : "Send"}
             </button>
           </form>
+        </div>
+      )}
+
+      {/* Lightbox for Popups */}
+      {selectedPopupMedia && (
+        <div
+          className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in"
+          onClick={() => setSelectedPopupMedia(null)}
+        >
+          <div
+            className="relative max-w-3xl max-h-[90vh] flex flex-col items-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-full flex justify-end pb-2">
+              <button
+                type="button"
+                onClick={() => setSelectedPopupMedia(null)}
+                className="text-white bg-white/20 hover:bg-white/30 rounded-lg px-2.5 py-1 text-sm font-bold"
+              >
+                ✕ Close
+              </button>
+            </div>
+            <img
+              src={selectedPopupMedia}
+              alt="Enlarged"
+              className="max-h-[80vh] max-w-full rounded-xl shadow-2xl object-contain border border-white/10"
+            />
+          </div>
         </div>
       )}
 
