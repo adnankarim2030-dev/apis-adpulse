@@ -35,14 +35,16 @@ export default async function MessagesPage() {
 
   return (
     <AppShell role={session.role} activePath="/messages" name={session.name} title="Team Messages & Chat">
-      <div className="space-y-4">
-        <div>
-          <h2 className="text-xl md:text-2xl font-bold tracking-tight text-text">
-            Staff Chats & Discussions 💬
-          </h2>
-          <p className="mt-1 text-sm text-muted">
-            Direct communication, task updates, and project collaboration threads.
-          </p>
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl md:text-2xl font-extrabold tracking-tight text-text">
+              Staff Chats & Discussions 💬
+            </h2>
+            <p className="text-xs text-muted">
+              Direct 1-on-1 team chats, voice notes, and instant HD video calls.
+            </p>
+          </div>
         </div>
 
         <ChatWorkbench

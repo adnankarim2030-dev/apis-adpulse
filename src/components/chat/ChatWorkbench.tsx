@@ -265,7 +265,7 @@ export function ChatWorkbench({
   const directChannels = channels.filter((c) => c.type === "DIRECT");
 
   return (
-    <div className="rounded-card border border-border bg-surface shadow-soft overflow-hidden grid grid-cols-1 md:grid-cols-12 min-h-[640px] max-h-[780px] relative">
+    <div className="rounded-2xl border border-slate-200/90 bg-surface shadow-md overflow-hidden grid grid-cols-1 md:grid-cols-12 h-[calc(100vh-170px)] min-h-[620px] relative">
       {/* Call Modal Overlay (Video/Audio) */}
       {activeCall && (
         <div className="absolute inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex flex-col p-4 animate-in fade-in duration-200">
@@ -301,7 +301,7 @@ export function ChatWorkbench({
       )}
 
       {/* Left Sidebar: Channels & Staff List */}
-      <div className="md:col-span-4 border-r border-border bg-background/50 flex flex-col h-full max-h-[780px] overflow-hidden">
+      <div className="md:col-span-4 border-r border-border bg-background/50 flex flex-col h-full overflow-hidden">
         <div className="p-4 border-b border-border bg-surface">
           <h3 className="text-sm font-bold text-text">Staff Direct Messages</h3>
           <p className="text-[11px] text-muted">1-on-1 team chats & company discussion</p>
@@ -372,7 +372,7 @@ export function ChatWorkbench({
       </div>
 
       {/* Right Pane: Active Chat Window */}
-      <div className="md:col-span-8 flex flex-col h-full max-h-[780px] bg-surface">
+      <div className="md:col-span-8 flex flex-col h-full bg-surface overflow-hidden">
         {/* Chat Header with Voice & Video Call Buttons */}
         <div className="px-5 py-3.5 border-b border-border flex items-center justify-between gap-3 bg-surface">
           <div className="flex items-center gap-3 min-w-0">

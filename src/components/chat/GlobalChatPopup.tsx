@@ -63,6 +63,7 @@ export function GlobalChatPopup({
   const [activePopup, setActivePopup] = useState<IncomingMessage | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
   const [chatWindowOpen, setChatWindowOpen] = useState(false);
+  const [isFullScreen, setIsFullScreen] = useState(false);
   const [chatTarget, setChatTarget] = useState<{ id: string; name: string; title: string; type: "DIRECT" | "GENERAL" } | null>(null);
 
   const [threadMessages, setThreadMessages] = useState<MessageThreadItem[]>([]);
@@ -324,9 +325,15 @@ export function GlobalChatPopup({
         </div>
       )}
 
-      {/* 2. FLOATING MINI CHAT WINDOW (Popup Drawer in bottom-right) */}
+      {/* 2. EXPANDABLE FLOATING CHAT WINDOW (Default Large or Full Screen) */}
       {chatWindowOpen && chatTarget && (
-        <div className="fixed bottom-4 right-4 sm:right-6 z-50 w-[92vw] sm:w-[380px] h-[520px] max-h-[85vh] rounded-2xl bg-white shadow-2xl border border-slate-200/90 flex flex-col overflow-hidden animate-in slide-in-from-bottom-5 fade-in duration-200">
+        <div
+          className={`fixed z-50 rounded-2xl bg-white shadow-2xl border border-slate-200/90 flex flex-col overflow-hidden transition-all duration-200 animate-in fade-in ${
+            isFullScreen
+              ? "inset-2 sm:inset-5 md:inset-8 w-auto h-auto max-h-none"
+              : "bottom-4 right-4 sm:right-6 w-[95vw] sm:w-[480px] md:w-[540px] h-[640px] max-h-[88vh]"
+          }`}
+        >
           {/* Header */}
           <div className="p-3.5 bg-gradient-to-r from-[#0F172A] via-[#1E293B] to-[#0F172A] text-white flex items-center justify-between shrink-0 shadow-md">
             <div className="flex items-center gap-2.5 min-w-0">
@@ -338,16 +345,27 @@ export function GlobalChatPopup({
             </div>
 
             <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsFullScreen(!isFullScreen)}
+                className="text-[11px] font-bold bg-white/10 hover:bg-white/20 text-slate-200 px-2 py-1 rounded-md transition-colors"
+                title={isFullScreen ? "Restore smaller size" : "Expand to Full Size"}
+              >
+                {isFullScreen ? "🗗 Restore" : "⛶ Full Size"}
+              </button>
               <Link
                 href="/messages"
                 className="text-[11px] font-semibold bg-white/10 hover:bg-white/20 text-slate-200 px-2 py-1 rounded-md transition-colors"
                 title="Open full page chat"
               >
-                Full Chat ↗
+                Full Page ↗
               </Link>
               <button
                 type="button"
-                onClick={() => setChatWindowOpen(false)}
+                onClick={() => {
+                  setChatWindowOpen(false);
+                  setIsFullScreen(false);
+                }}
                 className="text-slate-300 hover:text-white text-base p-1 leading-none rounded-md hover:bg-white/10 transition-colors"
                 title="Minimize chat window"
               >
