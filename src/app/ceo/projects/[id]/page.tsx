@@ -52,7 +52,7 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
   const memberUsers = project.members.map((m) => m.user);
 
   return (
-    <AppShell role="CEO" activePath="/ceo/projects" name={session.name} title={project.name}>
+    <AppShell role="CEO" activePath="/ceo/projects" name={session.name} userId={session.userId} title={project.name}>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <Link

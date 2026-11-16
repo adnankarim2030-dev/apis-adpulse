@@ -34,7 +34,7 @@ export default async function MessagesPage() {
   ];
 
   return (
-    <AppShell role={session.role} activePath="/messages" name={session.name} title="Team Messages & Chat">
+    <AppShell role={session.role} activePath="/messages" name={session.name} userId={session.userId} title="Team Messages & Chat">
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <div>

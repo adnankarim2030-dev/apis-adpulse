@@ -28,7 +28,7 @@ export default async function CeoProjectsPage({ searchParams }: PageProps) {
   });
 
   return (
-    <AppShell role="CEO" activePath="/ceo/projects" name={session.name} title="Projects">
+    <AppShell role="CEO" activePath="/ceo/projects" name={session.name} userId={session.userId} title="Projects">
       <div className="space-y-6">
         {/* Top Controls: Search & Filter + New Project Button */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">

@@ -122,7 +122,7 @@ export default async function PerformancePage() {
   };
 
   return (
-    <AppShell role={session.role} activePath="/performance" name={session.name} title="Performance Hub">
+    <AppShell role={session.role} activePath="/performance" name={session.name} userId={session.userId} title="Performance Hub">
       <div className="space-y-6">
         {/* Header */}
         <div className="rounded-card border border-border bg-surface p-5 md:p-6 shadow-soft">

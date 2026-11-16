@@ -19,7 +19,7 @@ export default async function StaffDetailPage({ params }: { params: { id: string
   if (!detail) notFound();
 
   return (
-    <AppShell role="CEO" activePath="/ceo/staff" name={session.name} title={detail.staff.name}>
+    <AppShell role="CEO" activePath="/ceo/staff" name={session.name} userId={session.userId} title={detail.staff.name}>
       <div className="space-y-6">
         <Link
           href="/ceo/staff"

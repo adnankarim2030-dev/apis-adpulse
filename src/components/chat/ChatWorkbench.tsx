@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Avatar } from "@/components/ui/Avatar";
 import { friendlyDate } from "@/lib/format";
+import { WhatsAppVoiceCallModal, type ActiveCallState } from "@/components/chat/WhatsAppVoiceCallModal";
 
 interface ChannelItem {
   id: string;
@@ -53,8 +54,8 @@ export function ChatWorkbench({
   const audioChunksRef = useRef<Blob[]>([]);
   const recordTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Audio/Video Calling State
-  const [activeCall, setActiveCall] = useState<{ mode: "audio" | "video"; roomUrl: string } | null>(null);
+  // WhatsApp Style Audio Calling State
+  const [activeCall, setActiveCall] = useState<ActiveCallState | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -236,16 +237,19 @@ export function ChatWorkbench({
     }
   };
 
-  // Start Call (Audio or Video)
+  // Start WhatsApp Style In-App Voice Call
   const initiateCall = async (mode: "audio" | "video") => {
-    const cleanRoomName = `APIS-${activeChannel.id.replace(/[^a-zA-Z0-9]/g, "").slice(0, 16)}`;
-    const roomUrl = `https://meet.jit.si/${cleanRoomName}#config.startWithAudioMuted=${mode === "video" ? "false" : "false"}&config.startWithVideoMuted=${mode === "audio" ? "true" : "false"}`;
-    setActiveCall({ mode, roomUrl });
+    const callId = `call-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    setActiveCall({
+      callId,
+      isCaller: true,
+      partnerId: activeChannel.id,
+      partnerName: activeChannel.name,
+      partnerTitle: activeChannel.subtitle,
+    });
 
-    // Broadcast call link into the chat thread
-    const callNotice = mode === "video"
-      ? `🎥 Started a Video Call. Join Room: ${cleanRoomName}`
-      : `📞 Started a Voice Call. Join Room: ${cleanRoomName}`;
+    // Broadcast call notice into the chat thread
+    const callNotice = `📞 Started an End-to-End Encrypted Voice Call with ${activeChannel.name}`;
 
     try {
       await fetch("/api/messages", {
@@ -266,38 +270,14 @@ export function ChatWorkbench({
 
   return (
     <div className="rounded-2xl border border-slate-200/90 bg-surface shadow-md overflow-hidden grid grid-cols-1 md:grid-cols-12 h-[calc(100vh-170px)] min-h-[620px] relative">
-      {/* Call Modal Overlay (Video/Audio) */}
+      {/* WhatsApp Style Pure In-App WebRTC Voice Call Modal */}
       {activeCall && (
-        <div className="absolute inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex flex-col p-4 animate-in fade-in duration-200">
-          <div className="flex items-center justify-between pb-3 text-white border-b border-slate-800">
-            <div className="flex items-center gap-2">
-              <span className="text-xl">{activeCall.mode === "video" ? "🎥" : "📞"}</span>
-              <p className="font-extrabold text-sm sm:text-base">
-                APIS Live {activeCall.mode === "video" ? "Video" : "Voice"} Meeting • {activeChannel.name}
-              </p>
-              <span className="text-xs font-bold text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded-full border border-emerald-500/30">
-                Connected
-              </span>
-            </div>
-            <button
-              type="button"
-              onClick={() => setActiveCall(null)}
-              className="rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs px-3.5 py-1.5 transition-colors flex items-center gap-1.5 shadow-md"
-            >
-              <span>✕</span>
-              <span>End Call</span>
-            </button>
-          </div>
-
-          <div className="flex-1 mt-3 rounded-2xl overflow-hidden border border-slate-800 bg-black">
-            <iframe
-              src={activeCall.roomUrl}
-              allow="camera; microphone; display-capture; autoplay; clipboard-write"
-              className="w-full h-full border-0"
-              title="APIS Video Call"
-            />
-          </div>
-        </div>
+        <WhatsAppVoiceCallModal
+          currentUserId={currentUserId}
+          currentUserName={currentUserName}
+          callState={activeCall}
+          onEndCall={() => setActiveCall(null)}
+        />
       )}
 
       {/* Left Sidebar: Channels & Staff List */}
@@ -469,22 +449,15 @@ export function ChatWorkbench({
                       ) : isCallInvite ? (
                         <div className="space-y-1.5 py-1">
                           <p className="font-bold flex items-center gap-1.5">
-                            <span>{msg.content.includes("Video") ? "🎥" : "📞"}</span>
+                            <span>📞</span>
                             <span>{msg.content}</span>
                           </p>
                           <button
                             type="button"
-                            onClick={() => {
-                              const match = msg.content.match(/Join Room: ([A-Za-z0-9-]+)/);
-                              const room = match ? match[1] : `APIS-${activeChannel.id}`;
-                              setActiveCall({
-                                mode: msg.content.includes("Video") ? "video" : "audio",
-                                roomUrl: `https://meet.jit.si/${room}`,
-                              });
-                            }}
+                            onClick={() => initiateCall("audio")}
                             className="text-xs font-bold bg-white text-teal-800 hover:bg-slate-100 px-3 py-1.5 rounded-lg shadow-xs transition-colors flex items-center gap-1"
                           >
-                            <span>Join Meeting ↗</span>
+                            <span>📞 Call Back / Join</span>
                           </button>
                         </div>
                       ) : (

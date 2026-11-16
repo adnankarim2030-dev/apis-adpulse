@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { Avatar } from "@/components/ui/Avatar";
 import { friendlyDate } from "@/lib/format";
+import { WhatsAppVoiceCallModal, type ActiveCallState } from "@/components/chat/WhatsAppVoiceCallModal";
 
 interface IncomingMessage {
   id: string;
@@ -65,6 +66,7 @@ export function GlobalChatPopup({
   const [chatWindowOpen, setChatWindowOpen] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [chatTarget, setChatTarget] = useState<{ id: string; name: string; title: string; type: "DIRECT" | "GENERAL" } | null>(null);
+  const [activeVoiceCall, setActiveVoiceCall] = useState<ActiveCallState | null>(null);
 
   const [threadMessages, setThreadMessages] = useState<MessageThreadItem[]>([]);
   const [loadingThread, setLoadingThread] = useState(false);
@@ -162,7 +164,26 @@ export function GlobalChatPopup({
     } catch {
       // silent background polling
     }
-  }, [activePath, chatTarget, chatWindowOpen, showNativeNotification]);
+
+    // Check for incoming voice call signals
+    if (currentUserId && !activeVoiceCall) {
+      try {
+        const callRes = await fetch("/api/calls/signal?poll=incoming");
+        if (callRes.ok) {
+          const callData = await callRes.json();
+          if (callData.activeCall) {
+            setActiveVoiceCall({
+              callId: callData.activeCall.callId,
+              isCaller: false,
+              partnerId: callData.activeCall.callerId,
+              partnerName: callData.activeCall.callerName,
+              sdpOffer: callData.activeCall.sdpOffer,
+            });
+          }
+        }
+      } catch {}
+    }
+  }, [activePath, activeVoiceCall, chatTarget, chatWindowOpen, currentUserId, showNativeNotification]);
 
   useEffect(() => {
     const timer = setInterval(pollMessages, 1500);
@@ -345,6 +366,25 @@ export function GlobalChatPopup({
             </div>
 
             <div className="flex items-center gap-1.5 shrink-0">
+              {chatTarget.type === "DIRECT" && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveVoiceCall({
+                      callId: `call-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+                      isCaller: true,
+                      partnerId: chatTarget.id,
+                      partnerName: chatTarget.name,
+                      partnerTitle: chatTarget.title,
+                    });
+                  }}
+                  className="text-xs font-bold bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 px-2 py-1 rounded-md transition-colors flex items-center gap-1"
+                  title="Start Voice Call"
+                >
+                  <span>📞</span>
+                  <span className="hidden sm:inline">Call</span>
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => setIsFullScreen(!isFullScreen)}
@@ -472,6 +512,16 @@ export function GlobalChatPopup({
             </span>
           )}
         </button>
+      )}
+
+      {/* 4. GLOBAL IN-APP WEBRTC VOICE CALL MODAL (Incoming or Outgoing) */}
+      {activeVoiceCall && (
+        <WhatsAppVoiceCallModal
+          currentUserId={currentUserId || ""}
+          currentUserName={currentUserName || "User"}
+          callState={activeVoiceCall}
+          onEndCall={() => setActiveVoiceCall(null)}
+        />
       )}
     </>
   );

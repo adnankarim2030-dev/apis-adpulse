@@ -18,7 +18,7 @@ export default async function NewProjectPage() {
   ]);
 
   return (
-    <AppShell role="CEO" activePath="/ceo/projects" name={session.name} title="New Project">
+    <AppShell role="CEO" activePath="/ceo/projects" name={session.name} userId={session.userId} title="New Project">
       <div className="max-w-2xl">
         <NewProjectForm clients={clients} staff={staff} />
       </div>

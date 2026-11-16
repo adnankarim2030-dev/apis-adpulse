@@ -23,7 +23,7 @@ export default async function StaffListPage() {
   const staff = await listStaffWithWorkload();
 
   return (
-    <AppShell role="CEO" activePath="/ceo/staff" name={session.name} title="Team">
+    <AppShell role="CEO" activePath="/ceo/staff" name={session.name} userId={session.userId} title="Team">
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
