@@ -33,7 +33,30 @@ const ICE_SERVERS: RTCConfiguration = {
     { urls: "stun:stun3.l.google.com:19302" },
     { urls: "stun:stun4.l.google.com:19302" },
   ],
+  iceCandidatePoolSize: 10,
 };
+
+// Create a silent audio track when hardware microphone is not available or blocked
+function createSilentAudioStream(): MediaStream {
+  try {
+    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+    if (AudioCtx) {
+      const ctx = new AudioCtx();
+      const osc = ctx.createOscillator();
+      const dst = ctx.createMediaStreamDestination();
+      osc.connect(dst);
+      osc.start();
+      const track = dst.stream.getAudioTracks()[0];
+      if (track) {
+        track.enabled = false; // silent
+        return dst.stream;
+      }
+    }
+  } catch (e) {
+    console.warn("Silent audio stream creation fallback error:", e);
+  }
+  return new MediaStream();
+}
 
 export function WhatsAppVoiceCallModal({
   currentUserId,
@@ -46,8 +69,9 @@ export function WhatsAppVoiceCallModal({
   const [isAudioMuted, setIsAudioMuted] = useState(false);
   const [isVideoMuted, setIsVideoMuted] = useState(false);
   const [duration, setDuration] = useState(0);
-  const [permissionError, setPermissionError] = useState<string | null>(null);
-  const [isRetryingPermission, setIsRetryingPermission] = useState(false);
+  const [statusNotice, setStatusNotice] = useState<string | null>(null);
+  const [isListenOnly, setIsListenOnly] = useState(false);
+  const [isSpeakerTesting, setIsSpeakerTesting] = useState(false);
 
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
@@ -66,7 +90,9 @@ export function WhatsAppVoiceCallModal({
       pollingRef.current = null;
     }
     if (localStreamRef.current) {
-      localStreamRef.current.getTracks().forEach((t) => t.stop());
+      try {
+        localStreamRef.current.getTracks().forEach((t) => t.stop());
+      } catch {}
       localStreamRef.current = null;
     }
     if (pcRef.current) {
@@ -95,22 +121,23 @@ export function WhatsAppVoiceCallModal({
     }
   }, [callStatus]);
 
-  // Mobile Safe Media Stream Acquisition
+  // Robust Device Audio Acquisition with Hardware & Permission Fallbacks
   const acquireMediaStream = async (wantsVideo: boolean): Promise<MediaStream> => {
-    // Check if mediaDevices API is available (blocked on HTTP non-localhost on mobile)
+    // Check if browser supports mediaDevices
     if (typeof navigator === "undefined" || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      throw new Error(
-        "SECURE_CONTEXT_REQUIRED: Mobile browsers require HTTPS for Microphone/Camera access. Please use https://apis-management-system.vercel.app or enable browser permissions."
-      );
+      console.warn("navigator.mediaDevices not available. Falling back to listen-only stream.");
+      setIsListenOnly(true);
+      setStatusNotice("Microphone unavailable on this browser. You are connected in Listen-Only mode (you can hear the other person).");
+      return createSilentAudioStream();
     }
 
     try {
-      // 1. Try with high quality echo cancellation and noise suppression
-      return await navigator.mediaDevices.getUserMedia({
+      // 1. Try optimal studio-quality voice constraints
+      const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
+          echoCancellation: { ideal: true },
+          noiseSuppression: { ideal: true },
+          autoGainControl: { ideal: true },
         },
         video: wantsVideo
           ? {
@@ -120,17 +147,79 @@ export function WhatsAppVoiceCallModal({
             }
           : false,
       });
-    } catch (err: any) {
-      console.warn("Advanced audio constraints failed, trying basic audio...", err);
-      // 2. Fallback to basic audio
-      return await navigator.mediaDevices.getUserMedia({
-        audio: true,
-        video: wantsVideo,
-      });
+      setIsListenOnly(false);
+      return stream;
+    } catch (primaryError: any) {
+      console.warn("Standard audio constraint acquisition failed, attempting simple audio fallback:", primaryError);
+
+      try {
+        // 2. Simple fallback
+        const simpleStream = await navigator.mediaDevices.getUserMedia({
+          audio: true,
+          video: wantsVideo,
+        });
+        setIsListenOnly(false);
+        return simpleStream;
+      } catch (fallbackError: any) {
+        console.warn("Hardware microphone acquisition failed. Falling back to Listen-Only mode:", fallbackError);
+        setIsListenOnly(true);
+
+        const errMsg = String(fallbackError?.message || fallbackError?.name || "");
+        if (fallbackError?.name === "NotAllowedError" || errMsg.includes("denied")) {
+          setStatusNotice(
+            "Microphone permission blocked! Tap the 🔒 lock icon in browser address bar, set Microphone to 'Allow', then unmute. Connected in Listen-Only mode."
+          );
+        } else if (fallbackError?.name === "NotFoundError" || errMsg.includes("not found")) {
+          setStatusNotice("No microphone hardware found on this computer. You are connected in Listen-Only mode (you can hear the caller).");
+        } else {
+          setStatusNotice("Microphone in use by another app. Connected in Listen-Only mode (you can hear the caller).");
+        }
+
+        // Return silent audio stream so WebRTC connection completes 100% and audio from other party plays
+        return createSilentAudioStream();
+      }
     }
   };
 
-  // Process any queued ICE candidates once remoteDescription is set
+  // Attach track safely to audio element
+  const attachRemoteTrack = (track: MediaStreamTrack, streams: readonly MediaStream[]) => {
+    let remoteStream: MediaStream;
+    if (streams && streams.length > 0 && streams[0]) {
+      remoteStream = streams[0];
+    } else {
+      remoteStream = new MediaStream([track]);
+    }
+
+    if (track.kind === "audio") {
+      if (remoteAudioRef.current) {
+        remoteAudioRef.current.srcObject = remoteStream;
+        (remoteAudioRef.current as any).playsInline = true;
+        remoteAudioRef.current.muted = false;
+        remoteAudioRef.current.volume = 1.0;
+
+        const playPromise = remoteAudioRef.current.play();
+        if (playPromise !== undefined) {
+          playPromise
+            .then(() => {
+              console.log("[WebRTC] Remote audio playback active");
+            })
+            .catch((e) => {
+              console.warn("[WebRTC] Autoplay blocked, unlocking on user gesture:", e);
+            });
+        }
+      }
+    }
+
+    if (track.kind === "video" && isVideo) {
+      if (remoteVideoRef.current) {
+        remoteVideoRef.current.srcObject = remoteStream;
+        remoteVideoRef.current.playsInline = true;
+        remoteVideoRef.current.play().catch(() => {});
+      }
+    }
+  };
+
+  // Process queued ICE candidates
   const flushQueuedIceCandidates = async (pc: RTCPeerConnection) => {
     while (iceCandidateQueueRef.current.length > 0) {
       const cand = iceCandidateQueueRef.current.shift();
@@ -138,7 +227,7 @@ export function WhatsAppVoiceCallModal({
         try {
           await pc.addIceCandidate(new RTCIceCandidate(cand));
         } catch (e) {
-          console.warn("Failed to add queued ICE candidate:", e);
+          console.warn("[WebRTC] Error adding queued candidate:", e);
         }
       }
     }
@@ -148,16 +237,15 @@ export function WhatsAppVoiceCallModal({
   const startCallerFlow = useCallback(
     async (targetId: string, targetName: string, callId: string, wantsVideo: boolean) => {
       try {
-        setPermissionError(null);
+        setStatusNotice(null);
         setCallStatus("RINGING");
         startOutgoingRingback();
 
-        // 1. Acquire Local Audio/Video
+        // 1. Acquire Local Audio/Video (with listen-only fallback)
         const stream = await acquireMediaStream(wantsVideo);
         localStreamRef.current = stream;
 
-        // Render local video preview if video call
-        if (wantsVideo && localVideoRef.current) {
+        if (wantsVideo && localVideoRef.current && stream.getVideoTracks().length > 0) {
           localVideoRef.current.srcObject = stream;
         }
 
@@ -165,28 +253,23 @@ export function WhatsAppVoiceCallModal({
         const pc = new RTCPeerConnection(ICE_SERVERS);
         pcRef.current = pc;
 
+        // Add local tracks to peer connection
         stream.getTracks().forEach((track) => pc.addTrack(track, stream));
 
-        // When remote track arrives, attach to audio/video elements
+        // When remote track arrives (HANDLES BOTH stream and track-only events)
         pc.ontrack = (event) => {
-          const remoteStream = event.streams[0];
-          if (!remoteStream) return;
+          attachRemoteTrack(event.track, event.streams);
+        };
 
-          // Remote Audio
-          if (remoteAudioRef.current) {
-            remoteAudioRef.current.srcObject = remoteStream;
-            (remoteAudioRef.current as any).playsInline = true;
-            const playPromise = remoteAudioRef.current.play();
-            if (playPromise !== undefined) {
-              playPromise.catch((e) => console.warn("Remote audio autoplay blocked:", e));
-            }
-          }
-
-          // Remote Video
-          if (wantsVideo && remoteVideoRef.current) {
-            remoteVideoRef.current.srcObject = remoteStream;
-            remoteVideoRef.current.playsInline = true;
-            remoteVideoRef.current.play().catch(() => {});
+        // Track connection state
+        pc.oniceconnectionstatechange = () => {
+          if (pc.iceConnectionState === "connected" || pc.iceConnectionState === "completed") {
+            setCallStatus("CONNECTED");
+            stopCallAudio();
+          } else if (pc.iceConnectionState === "failed") {
+            try {
+              pc.restartIce();
+            } catch {}
           }
         };
 
@@ -263,20 +346,9 @@ export function WhatsAppVoiceCallModal({
           } catch {}
         }, 1000);
       } catch (err: any) {
-        console.error("Caller setup error:", err);
+        console.error("Caller initiation failed:", err);
         stopCallAudio();
-        const msg = String(err.message || "");
-        if (msg.includes("SECURE_CONTEXT_REQUIRED")) {
-          setPermissionError(
-            "Mobile requires HTTPS! Please access via https://apis-management-system.vercel.app for full microphone & camera access."
-          );
-        } else if (err.name === "NotAllowedError" || msg.includes("denied")) {
-          setPermissionError(
-            "Microphone permission blocked! Tap the 🔒 lock / settings icon in your browser address bar and choose 'Allow'."
-          );
-        } else {
-          setPermissionError("Audio device or microphone not found on this device.");
-        }
+        setStatusNotice("Call initiation encountered an error. Please try again.");
       }
     },
     [cleanupCall, currentUserId, onEndCall]
@@ -286,15 +358,14 @@ export function WhatsAppVoiceCallModal({
   const acceptCall = async () => {
     if (!callState || !callState.sdpOffer) return;
     try {
-      setPermissionError(null);
-      setIsRetryingPermission(true);
+      setStatusNotice(null);
       stopCallAudio();
 
-      // 1. Acquire Local Audio/Video
+      // 1. Acquire Local Audio/Video (with listen-only fallback)
       const stream = await acquireMediaStream(isVideo);
       localStreamRef.current = stream;
 
-      if (isVideo && localVideoRef.current) {
+      if (isVideo && localVideoRef.current && stream.getVideoTracks().length > 0) {
         localVideoRef.current.srcObject = stream;
       }
 
@@ -305,22 +376,13 @@ export function WhatsAppVoiceCallModal({
       stream.getTracks().forEach((track) => pc.addTrack(track, stream));
 
       pc.ontrack = (event) => {
-        const remoteStream = event.streams[0];
-        if (!remoteStream) return;
+        attachRemoteTrack(event.track, event.streams);
+      };
 
-        if (remoteAudioRef.current) {
-          remoteAudioRef.current.srcObject = remoteStream;
-          (remoteAudioRef.current as any).playsInline = true;
-          const playPromise = remoteAudioRef.current.play();
-          if (playPromise !== undefined) {
-            playPromise.catch((e) => console.warn("Remote audio play blocked:", e));
-          }
-        }
-
-        if (isVideo && remoteVideoRef.current) {
-          remoteVideoRef.current.srcObject = remoteStream;
-          remoteVideoRef.current.playsInline = true;
-          remoteVideoRef.current.play().catch(() => {});
+      pc.oniceconnectionstatechange = () => {
+        if (pc.iceConnectionState === "connected" || pc.iceConnectionState === "completed") {
+          setCallStatus("CONNECTED");
+          stopCallAudio();
         }
       };
 
@@ -341,7 +403,7 @@ export function WhatsAppVoiceCallModal({
       // Set Remote Description (Caller's Offer)
       await pc.setRemoteDescription(new RTCSessionDescription(callState.sdpOffer));
 
-      // Flush any early arriving ICE candidates
+      // Flush early arriving ICE candidates
       await flushQueuedIceCandidates(pc);
 
       // Create Answer
@@ -360,7 +422,6 @@ export function WhatsAppVoiceCallModal({
       });
 
       setCallStatus("CONNECTED");
-      setIsRetryingPermission(false);
 
       // Poll for ICE candidates or Call End
       pollingRef.current = setInterval(async () => {
@@ -395,20 +456,8 @@ export function WhatsAppVoiceCallModal({
       }, 1000);
     } catch (err: any) {
       console.error("Receiver accept error:", err);
-      setIsRetryingPermission(false);
       stopCallAudio();
-      const msg = String(err.message || "");
-      if (msg.includes("SECURE_CONTEXT_REQUIRED")) {
-        setPermissionError(
-          "Mobile requires HTTPS! Please access via https://apis-management-system.vercel.app for microphone permission."
-        );
-      } else if (err.name === "NotAllowedError" || msg.includes("denied")) {
-        setPermissionError(
-          "Microphone permission blocked! Tap the 🔒 lock / settings icon in your browser address bar and choose 'Allow'."
-        );
-      } else {
-        setPermissionError("Microphone access failed. Please check device permissions.");
-      }
+      setStatusNotice("Failed to connect audio stream. Please try again.");
     }
   };
 
@@ -472,6 +521,28 @@ export function WhatsAppVoiceCallModal({
     }
   };
 
+  // Speaker Sound Check helper
+  const testSpeaker = () => {
+    setIsSpeakerTesting(true);
+    try {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (AudioCtx) {
+        const ctx = new AudioCtx();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5 chime
+        gain.gain.setValueAtTime(0.12, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.65);
+      }
+    } catch {}
+    setTimeout(() => setIsSpeakerTesting(false), 800);
+  };
+
   // Mount logic based on caller vs receiver
   useEffect(() => {
     if (!callState) return;
@@ -492,12 +563,18 @@ export function WhatsAppVoiceCallModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-md animate-in fade-in duration-200">
-      {/* Hidden audio element for receiving remote voice with mobile playsInline */}
-      <audio ref={remoteAudioRef} autoPlay playsInline controls={false} />
+      {/* Remote Audio Output Element */}
+      <audio
+        ref={remoteAudioRef}
+        autoPlay
+        playsInline
+        controls={false}
+        className="hidden"
+      />
 
       <div className="relative w-full max-w-sm sm:max-w-md rounded-3xl bg-gradient-to-b from-[#111B21] via-[#0C1317] to-[#111B21] border border-emerald-500/30 shadow-2xl p-5 sm:p-6 flex flex-col items-center text-center text-white overflow-hidden">
         {/* Top Encrypted Badge */}
-        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-950/70 border border-emerald-500/40 text-[11px] font-semibold text-emerald-400 mb-4">
+        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-950/70 border border-emerald-500/40 text-[11px] font-semibold text-emerald-400 mb-3">
           <span>🔒</span>
           <span>{isVideo ? "End-to-End Encrypted Video Call" : "End-to-End Encrypted Voice Call"}</span>
         </div>
@@ -525,12 +602,12 @@ export function WhatsAppVoiceCallModal({
           </div>
         ) : (
           /* User Avatar with Pulsing Radar Effect */
-          <div className="relative my-4">
+          <div className="relative my-3">
             {(callStatus === "RINGING" || callStatus === "INCOMING" || callStatus === "CONNECTED") && (
               <div className="absolute inset-0 rounded-full animate-ping opacity-25 bg-emerald-500" />
             )}
             <div className="relative p-1.5 rounded-full border-2 border-emerald-400/80 shadow-lg">
-              <Avatar name={callState.partnerName} size={96} />
+              <Avatar name={callState.partnerName} size={92} />
             </div>
           </div>
         )}
@@ -543,29 +620,20 @@ export function WhatsAppVoiceCallModal({
           {callState.partnerTitle || "Staff Member"}
         </p>
 
+        {/* Listen Only Badge */}
+        {isListenOnly && (
+          <div className="mt-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/30 text-[10px] font-bold text-amber-300 flex items-center gap-1">
+            <span>🎧</span>
+            <span>Listen-Only Mode (Microphone Off / Speakers Active)</span>
+          </div>
+        )}
+
         {/* Call Status / Duration / Errors */}
-        <div className="my-4 min-h-[36px] flex flex-col items-center justify-center">
-          {permissionError ? (
-            <div className="space-y-2">
-              <p className="text-xs font-semibold text-rose-300 bg-rose-950/70 p-2.5 rounded-xl border border-rose-800 text-left leading-relaxed">
-                ⚠️ {permissionError}
-              </p>
-              <button
-                type="button"
-                onClick={() => {
-                  setPermissionError(null);
-                  if (callState.isCaller) {
-                    startCallerFlow(callState.partnerId, callState.partnerName, callState.callId, isVideo);
-                  } else {
-                    acceptCall();
-                  }
-                }}
-                disabled={isRetryingPermission}
-                className="text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-1.5 rounded-lg shadow-sm transition-all"
-              >
-                {isRetryingPermission ? "Requesting..." : "🔄 Try Permission Again"}
-              </button>
-            </div>
+        <div className="my-3 min-h-[32px] flex flex-col items-center justify-center">
+          {statusNotice ? (
+            <p className="text-[11px] font-semibold text-amber-200 bg-amber-950/60 p-2 rounded-xl border border-amber-800 text-left leading-relaxed max-w-xs">
+              ⚠️ {statusNotice}
+            </p>
           ) : callStatus === "RINGING" ? (
             <div className="flex items-center gap-2 text-emerald-400 font-bold text-sm">
               <span className="animate-spin text-base">{isVideo ? "🎥" : "📞"}</span>
@@ -590,24 +658,24 @@ export function WhatsAppVoiceCallModal({
 
         {/* Audio Waveform Graphic while Connected (Audio mode) */}
         {!isVideo && callStatus === "CONNECTED" && (
-          <div className="flex items-center justify-center gap-1.5 my-2 h-7">
-            <span className="w-1.5 bg-emerald-400 rounded-full animate-bounce h-3" />
-            <span className="w-1.5 bg-emerald-400 rounded-full animate-bounce h-6 delay-75" />
-            <span className="w-1.5 bg-emerald-400 rounded-full animate-bounce h-4 delay-150" />
-            <span className="w-1.5 bg-emerald-400 rounded-full animate-bounce h-7 delay-200" />
-            <span className="w-1.5 bg-emerald-400 rounded-full animate-bounce h-3 delay-300" />
+          <div className="flex items-center justify-center gap-1.5 my-2 h-6">
+            <span className="w-1 bg-emerald-400 rounded-full animate-bounce h-3" />
+            <span className="w-1 bg-emerald-400 rounded-full animate-bounce h-5 delay-75" />
+            <span className="w-1 bg-emerald-400 rounded-full animate-bounce h-3.5 delay-150" />
+            <span className="w-1 bg-emerald-400 rounded-full animate-bounce h-6 delay-200" />
+            <span className="w-1 bg-emerald-400 rounded-full animate-bounce h-3 delay-300" />
           </div>
         )}
 
         {/* Bottom Action Controls */}
-        <div className="w-full mt-4 pt-4 border-t border-slate-800 flex items-center justify-center gap-4 sm:gap-6">
+        <div className="w-full mt-3 pt-3 border-t border-slate-800 flex items-center justify-center gap-4 sm:gap-6">
           {callStatus === "INCOMING" ? (
             <>
               {/* Decline Button (Red) */}
               <button
                 type="button"
                 onClick={declineCall}
-                className="flex flex-col items-center gap-1.5 group cursor-pointer"
+                className="flex flex-col items-center gap-1 group cursor-pointer"
               >
                 <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-full bg-rose-600 group-hover:bg-rose-500 shadow-lg shadow-rose-950 flex items-center justify-center text-xl transition-all transform group-hover:scale-105">
                   📞
@@ -619,7 +687,7 @@ export function WhatsAppVoiceCallModal({
               <button
                 type="button"
                 onClick={acceptCall}
-                className="flex flex-col items-center gap-1.5 group cursor-pointer"
+                className="flex flex-col items-center gap-1 group cursor-pointer"
               >
                 <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-full bg-emerald-600 group-hover:bg-emerald-500 shadow-lg shadow-emerald-950 flex items-center justify-center text-xl transition-all transform group-hover:scale-110 animate-bounce">
                   {isVideo ? "🎥" : "📞"}
@@ -630,7 +698,7 @@ export function WhatsAppVoiceCallModal({
           ) : (
             <>
               {/* Mute / Unmute Audio */}
-              {callStatus === "CONNECTED" && (
+              {callStatus === "CONNECTED" && !isListenOnly && (
                 <button
                   type="button"
                   onClick={toggleAudioMute}
@@ -672,6 +740,19 @@ export function WhatsAppVoiceCallModal({
                   <span className="text-[10px] font-semibold">{isVideoMuted ? "Cam Off" : "Cam On"}</span>
                 </button>
               )}
+
+              {/* Speaker Test helper button */}
+              <button
+                type="button"
+                onClick={testSpeaker}
+                className="flex flex-col items-center gap-1 cursor-pointer text-slate-400 hover:text-emerald-400 transition-colors"
+                title="Test if your audio speaker / headphones work"
+              >
+                <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center text-base border border-slate-700 bg-slate-800/60 hover:bg-slate-700">
+                  {isSpeakerTesting ? "🔊" : "🔈"}
+                </div>
+                <span className="text-[10px] font-semibold">{isSpeakerTesting ? "Playing..." : "Speaker Test"}</span>
+              </button>
 
               {/* End Call Button (Red Hangup) */}
               <button
