@@ -1,6 +1,6 @@
 {
   "env": {
-    "DATABASE_URL": "postgresql://neondb_owner:npg_OTMfBphb41Hq@ep-calm-rice-aerxsuly-pooler.c-2.us-east-2.aws.neon.tech/neondb?schema=apis_phase1&sslmode=require",
+    "DATABASE_URL": "postgresql://neondb_owner:npg_CqZ6britaE1p@ep-steep-mode-bewdn7qv-pooler.c-9.us-east-2.aws.neon.tech/neondb?sslmode=require",
     "AUTH_SECRET": "apis_secret_jwt_2026_team_13_members_official_v2",
     "AUTH_COOKIE_NAME": "apis_session"
   }
