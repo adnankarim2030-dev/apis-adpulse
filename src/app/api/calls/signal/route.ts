@@ -66,6 +66,7 @@ export async function GET(request: NextRequest) {
           callerId: latestCall.actorId,
           callerName: meta.callerName || "Team Member",
           targetUserId: session.userId,
+          callType: meta.callType || "audio",
           sdpOffer: meta.sdpOffer,
           createdAt: latestCall.createdAt.toISOString(),
         },
@@ -110,7 +111,7 @@ export async function POST(request: NextRequest) {
     const session = requireSession(await getSession());
     const body = await request.json();
 
-    const { action, callId, targetUserId, targetName, sdp, candidate, reason } = body;
+    const { action, callId, targetUserId, targetName, sdp, candidate, reason, callType } = body;
 
     if (!action || !callId) {
       return NextResponse.json({ error: "Action and callId are required" }, { status: 400 });
@@ -131,6 +132,7 @@ export async function POST(request: NextRequest) {
             targetUserId,
             targetName,
             sdpOffer: sdp,
+            callType: callType || "audio",
             status: "RINGING",
           },
         },

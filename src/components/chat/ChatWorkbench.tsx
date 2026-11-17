@@ -96,13 +96,38 @@ export function ChatWorkbench({
     [activeChannel.id, activeChannel.type]
   );
 
+  // Poll for incoming calls when not already in an active call
+  const pollIncomingCalls = useCallback(async () => {
+    if (activeCall) return;
+    try {
+      const res = await fetch("/api/calls/signal?poll=incoming");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.activeCall) {
+          setActiveCall({
+            callId: data.activeCall.callId,
+            isCaller: false,
+            partnerId: data.activeCall.callerId,
+            partnerName: data.activeCall.callerName,
+            callType: data.activeCall.callType || "audio",
+            sdpOffer: data.activeCall.sdpOffer,
+          });
+        }
+      }
+    } catch {
+      // background polling
+    }
+  }, [activeCall]);
+
   useEffect(() => {
     fetchMessages(true);
+    pollIncomingCalls();
     const interval = setInterval(() => {
       fetchMessages(false);
+      pollIncomingCalls();
     }, 1500); // 1.5 seconds ultra-fast real-time poll
     return () => clearInterval(interval);
-  }, [fetchMessages]);
+  }, [fetchMessages, pollIncomingCalls]);
 
   // Scroll to bottom on new messages
   useEffect(() => {
@@ -421,7 +446,7 @@ export function ChatWorkbench({
     } catch {}
   };
 
-  // Start WhatsApp Style In-App Voice Call
+  // Start WhatsApp Style In-App Voice / Video Call
   const initiateCall = async (mode: "audio" | "video") => {
     const callId = `call-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     setActiveCall({
@@ -430,10 +455,13 @@ export function ChatWorkbench({
       partnerId: activeChannel.id,
       partnerName: activeChannel.name,
       partnerTitle: activeChannel.subtitle,
+      callType: mode,
     });
 
     // Broadcast call notice into the chat thread
-    const callNotice = `📞 Started an End-to-End Encrypted Voice Call with ${activeChannel.name}`;
+    const callNotice = mode === "video"
+      ? `🎥 Started an End-to-End Encrypted Video Call with ${activeChannel.name}`
+      : `📞 Started an End-to-End Encrypted Voice Call with ${activeChannel.name}`;
 
     try {
       await fetch("/api/messages", {

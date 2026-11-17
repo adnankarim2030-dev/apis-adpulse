@@ -180,6 +180,7 @@ export function GlobalChatPopup({
               isCaller: false,
               partnerId: callData.activeCall.callerId,
               partnerName: callData.activeCall.callerName,
+              callType: callData.activeCall.callType || "audio",
               sdpOffer: callData.activeCall.sdpOffer,
             });
           }
