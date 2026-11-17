@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID;
@@ -25,7 +25,8 @@ function getR2Client(): S3Client | null {
 }
 
 /**
- * Generates a presigned PUT URL for direct browser-to-R2 upload.
+ * Generates a presigned PUT URL for direct browser-to-R2 upload (up to 10 GB)
+ * and a presigned GET download URL valid for 7 days.
  * Bypasses Vercel's 4.5 MB request payload limit completely.
  */
 export async function createPresignedUpload(
@@ -38,18 +39,25 @@ export async function createPresignedUpload(
   const cleanName = fileName.replace(/[^a-zA-Z0-9.-]/g, "_");
   const key = `uploads/${Date.now()}-${cleanName}`;
 
-  const command = new PutObjectCommand({
+  // 1. Presigned Upload URL (PUT)
+  const putCommand = new PutObjectCommand({
     Bucket: R2_BUCKET_NAME,
     Key: key,
     ContentType: contentType || "application/octet-stream",
   });
+  const uploadUrl = await getSignedUrl(client, putCommand, { expiresIn: 10800 }); // 3 hours
 
-  // URL valid for 3 hours (plenty of time for large 10GB uploads)
-  const uploadUrl = await getSignedUrl(client, command, { expiresIn: 10800 });
-
-  const downloadUrl = R2_PUBLIC_DOMAIN
-    ? `${R2_PUBLIC_DOMAIN.replace(/\/$/, "")}/${key}`
-    : `https://${R2_BUCKET_NAME}.${R2_ACCOUNT_ID}.r2.cloudflarestorage.com/${key}`;
+  // 2. Download URL: Either public custom domain or 7-day presigned GET
+  let downloadUrl = "";
+  if (R2_PUBLIC_DOMAIN) {
+    downloadUrl = `${R2_PUBLIC_DOMAIN.replace(/\/$/, "")}/${key}`;
+  } else {
+    const getCommand = new GetObjectCommand({
+      Bucket: R2_BUCKET_NAME,
+      Key: key,
+    });
+    downloadUrl = await getSignedUrl(client, getCommand, { expiresIn: 604800 }); // 7 days
+  }
 
   return { uploadUrl, downloadUrl, key };
 }
