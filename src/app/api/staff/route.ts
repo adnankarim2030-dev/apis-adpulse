@@ -14,7 +14,7 @@ export async function GET() {
 
     // Both CEO and STAFF need to see the staff roster for assigning tasks and team collaboration
     const staff = await prisma.user.findMany({
-      where: { isActive: true },
+      where: { isActive: true, name: { not: "Ahmed Khan" } },
       select: {
         id: true,
         name: true,

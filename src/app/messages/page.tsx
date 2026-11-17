@@ -12,6 +12,7 @@ export default async function MessagesPage() {
     where: {
       isActive: true,
       id: { not: session.userId },
+      name: { not: "Ahmed Khan" },
     },
     select: { id: true, name: true, jobTitle: true, department: true },
     orderBy: { name: "asc" },

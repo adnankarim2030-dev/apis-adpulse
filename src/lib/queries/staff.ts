@@ -12,7 +12,7 @@ function workloadFromActiveCount(activeCount: number): WorkloadLevel {
 /** Shared by GET /api/staff and the CEO "Staff" page. */
 export async function listStaffWithWorkload() {
   const staff = await prisma.user.findMany({
-    where: { role: "STAFF" },
+    where: { role: "STAFF", name: { not: "Ahmed Khan" } },
     select: {
       id: true,
       name: true,

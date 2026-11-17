@@ -111,14 +111,6 @@ export const TEAM_ROSTER = [
     department: "Product & Design Studio",
     password: "Ozam*Vector48",
   },
-  {
-    name: "Ahmed Khan",
-    email: "ahmed.khan@adpulse.com",
-    role: "STAFF" as const,
-    jobTitle: "Senior Graphic Designer",
-    department: "Creative",
-    password: "Ahmed*Creative26",
-  },
 ];
 
 async function main() {
