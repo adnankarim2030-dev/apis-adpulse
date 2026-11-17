@@ -690,7 +690,7 @@ export function ChatWorkbench({
                             rel="noopener noreferrer"
                             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold text-xs shadow-xs transition-colors w-full justify-center"
                           >
-                            <span>📥 Download 10 GB File</span>
+                            <span>📥 Download File {cloudFileData.size ? `(${cloudFileData.size})` : ""}</span>
                           </a>
                         </div>
                       ) : isCallInvite ? (
@@ -790,15 +790,15 @@ export function ChatWorkbench({
                 {uploadingMedia ? <span className="animate-spin text-sm">⏳</span> : "📎"}
               </button>
 
-              {/* ☁️ 10 GB Heavy File Button */}
+              {/* ☁️ Heavy File / Cloud Link Button */}
               <button
                 type="button"
                 onClick={() => setShowCloudModal(true)}
                 className="rounded-button bg-teal-50 hover:bg-teal-100 text-teal-800 text-xs font-bold px-2.5 min-h-[44px] flex items-center gap-1 transition-all border border-teal-200 shadow-xs cursor-pointer shrink-0"
-                title="Send Heavy File / 10 GB Video"
+                title="Share Heavy File or Google Drive / WeTransfer Link (Up to 10 GB)"
               >
                 <span>☁️</span>
-                <span className="hidden sm:inline">10 GB</span>
+                <span className="hidden sm:inline">Cloud Link</span>
               </button>
 
               <input

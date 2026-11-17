@@ -78,7 +78,7 @@ async function auditRosterExclusion() {
   console.log(" 2. AUDIT: AHMED KHAN ROSTER & CHAT EXCLUSION TEST");
   console.log("=======================================================");
 
-  const adnanSession = sessions["adnan@apis.com"]?.cookie;
+  const adnanSession = sessions["adnan@apis.com"]?.cookie || "";
 
   // 1. Check /api/staff
   const staffRes = await fetch(`${BASE_URL}/api/staff`, {
@@ -116,7 +116,7 @@ async function auditChatSendAndReceive() {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Cookie: khurram.cookie,
+      Cookie: khurram.cookie || '',
     },
     body: JSON.stringify({
       channelType: "GENERAL",
@@ -130,7 +130,7 @@ async function auditChatSendAndReceive() {
 
   // 2. Adnan polls messages and verifies receipt
   const pollRes = await fetch(`${BASE_URL}/api/messages?channelType=GENERAL&channelId=general`, {
-    headers: { Cookie: adnan.cookie },
+    headers: { Cookie: adnan.cookie || '' },
   });
   const pollJson = await pollRes.json();
   const messages = pollJson?.data || [];
@@ -144,7 +144,7 @@ async function auditChatSendAndReceive() {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Cookie: adnan.cookie,
+      Cookie: adnan.cookie || '',
     },
     body: JSON.stringify({
       channelType: "GENERAL",
@@ -161,7 +161,7 @@ async function auditChatSendAndReceive() {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Cookie: khurram.cookie,
+      Cookie: khurram.cookie || '',
     },
     body: JSON.stringify({
       channelType: "DIRECT",
@@ -173,7 +173,7 @@ async function auditChatSendAndReceive() {
 
   // Adnan checks direct inbox
   const dmPollRes = await fetch(`${BASE_URL}/api/messages?channelType=DIRECT&channelId=${khurram.user.id}`, {
-    headers: { Cookie: adnan.cookie },
+    headers: { Cookie: adnan.cookie || '' },
   });
   const dmPollJson = await dmPollRes.json();
   const receivedDm = (dmPollJson?.data || []).find((m: any) => m.content === dmContent);
@@ -202,7 +202,7 @@ async function auditVoiceAndVideoCalls() {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Cookie: adnan.cookie,
+      Cookie: adnan.cookie || '',
     },
     body: JSON.stringify(callOfferPayload),
   });
@@ -212,7 +212,7 @@ async function auditVoiceAndVideoCalls() {
 
   // Step 2: Khurram polls for incoming calls
   const khurramPollRes = await fetch(`${BASE_URL}/api/calls/signal?poll=incoming`, {
-    headers: { Cookie: khurram.cookie },
+    headers: { Cookie: khurram.cookie || '' },
   });
   const khurramPollJson = await khurramPollRes.json();
   const activeCall = khurramPollJson?.activeCall;
@@ -231,7 +231,7 @@ async function auditVoiceAndVideoCalls() {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Cookie: khurram.cookie,
+      Cookie: khurram.cookie || '',
     },
     body: JSON.stringify(answerPayload),
   });
@@ -241,7 +241,7 @@ async function auditVoiceAndVideoCalls() {
 
   // Step 4: Adnan polls and receives answer signal
   const adnanPollRes = await fetch(`${BASE_URL}/api/calls/signal?callId=${testCallId}`, {
-    headers: { Cookie: adnan.cookie },
+    headers: { Cookie: adnan.cookie || '' },
   });
   const adnanPollJson = await adnanPollRes.json();
   const hasAnswer = Boolean(
@@ -255,7 +255,7 @@ async function auditVoiceAndVideoCalls() {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Cookie: adnan.cookie,
+      Cookie: adnan.cookie || '',
     },
     body: JSON.stringify({
       action: "CALL_END",
@@ -280,7 +280,7 @@ async function auditFileAndMediaAttachments() {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Cookie: adnan.cookie,
+      Cookie: adnan.cookie || '',
     },
     body: JSON.stringify({
       fileName: "AdPulse_Creative_Campaign_4K_10GB.mp4",
@@ -302,7 +302,7 @@ async function auditFileAndMediaAttachments() {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Cookie: adnan.cookie,
+      Cookie: adnan.cookie || '',
     },
     body: JSON.stringify({
       channelType: "GENERAL",
@@ -325,7 +325,7 @@ async function auditFileAndMediaAttachments() {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Cookie: adnan.cookie,
+      Cookie: adnan.cookie || '',
     },
     body: JSON.stringify({
       channelType: "GENERAL",
@@ -337,7 +337,7 @@ async function auditFileAndMediaAttachments() {
 
   // 4. Verify Khurram retrieves the video and image attachments cleanly
   const verifyRes = await fetch(`${BASE_URL}/api/messages?channelType=GENERAL&channelId=general`, {
-    headers: { Cookie: khurram.cookie },
+    headers: { Cookie: khurram.cookie || '' },
   });
   const verifyJson = await verifyRes.json();
   const allMessages = verifyJson?.data || [];
@@ -358,7 +358,7 @@ async function auditDashboardEndpoints() {
 
   // 1. CEO Dashboard
   const ceoDashRes = await fetch(`${BASE_URL}/api/dashboard/ceo`, {
-    headers: { Cookie: khurram.cookie },
+    headers: { Cookie: khurram.cookie || '' },
   });
   const ceoDashJson = await ceoDashRes.json();
   const ceoOk = ceoDashRes.ok && Boolean(ceoDashJson?.data?.kpis);
@@ -366,7 +366,7 @@ async function auditDashboardEndpoints() {
 
   // 2. Staff Dashboard
   const staffDashRes = await fetch(`${BASE_URL}/api/dashboard/staff`, {
-    headers: { Cookie: adnan.cookie },
+    headers: { Cookie: adnan.cookie || '' },
   });
   const staffDashJson = await staffDashRes.json();
   const staffOk = staffDashRes.ok && Boolean(staffDashJson?.data?.counts);
@@ -374,7 +374,7 @@ async function auditDashboardEndpoints() {
 
   // 3. Projects API
   const projRes = await fetch(`${BASE_URL}/api/projects`, {
-    headers: { Cookie: khurram.cookie },
+    headers: { Cookie: khurram.cookie || '' },
   });
   const projJson = await projRes.json();
   record("DASHBOARD", "Active Projects Roster API", projRes.ok, `Projects Count: ${projJson?.data?.length ?? 0}`);
