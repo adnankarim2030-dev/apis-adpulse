@@ -131,3 +131,52 @@ export async function POST(request: NextRequest) {
     return handleApiError(error);
   }
 }
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const session = requireSession(await getSession());
+    const { searchParams } = new URL(request.url);
+    let id = searchParams.get("id");
+
+    if (!id) {
+      const body = await request.json().catch(() => ({}));
+      id = body?.id;
+    }
+
+    if (!id) {
+      return NextResponse.json({ error: "Message ID is required" }, { status: 400 });
+    }
+
+    const log = await prisma.activityLog.findUnique({
+      where: { id },
+    });
+
+    if (!log) {
+      return NextResponse.json({ error: "Message not found" }, { status: 404 });
+    }
+
+    // Permission check: only the sender or a CEO/Executive can delete
+    const isSender = log.actorId === session.userId;
+    const isCEO = session.role === "CEO";
+
+    if (!isSender && !isCEO) {
+      return NextResponse.json(
+        { error: "You are not authorized to delete this message" },
+        { status: 403 }
+      );
+    }
+
+    await prisma.activityLog.delete({
+      where: { id },
+    });
+
+    return NextResponse.json({
+      success: true,
+      data: { id },
+      message: "Message deleted successfully",
+    });
+  } catch (error) {
+    return handleApiError(error);
+  }
+}
+

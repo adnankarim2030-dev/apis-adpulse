@@ -340,6 +340,8 @@ async function auditFileAndMediaAttachments() {
       content: videoPayload,
     }),
   });
+  const videoChatJson = await videoChatRes.json();
+  const createdVideoId = videoChatJson?.data?.id;
   record("MEDIA", "Chat message with 4K Video Attachment sent", videoChatRes.ok, `Status: ${videoChatRes.status}`);
 
   // 4. Verify Khurram retrieves the video and image attachments cleanly
@@ -353,6 +355,49 @@ async function auditFileAndMediaAttachments() {
 
   record("MEDIA", "Receiver renders Image attachment in Chat", foundImage, `Image found in feed`);
   record("MEDIA", "Receiver renders 4K Video Player in Chat", foundVideo, `Video player ready with direct R2 streaming`);
+
+  // 5. Test Deleting Message & Video
+  if (createdVideoId) {
+    const delVideoRes = await fetch(`${BASE_URL}/api/messages?id=${createdVideoId}`, {
+      method: "DELETE",
+      headers: { Cookie: adnan.cookie || '' },
+    });
+    const delVideoJson = await delVideoRes.json();
+    record("DELETE", "Author successfully deletes sent Video message", delVideoRes.ok && delVideoJson?.success, `ID: ${createdVideoId.slice(0, 8)}...`);
+  }
+
+  // Also send and delete a regular text message
+  const textMsgRes = await fetch(`${BASE_URL}/api/messages`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Cookie: adnan.cookie || '',
+    },
+    body: JSON.stringify({
+      channelType: "GENERAL",
+      channelId: "general",
+      content: "Temporary message to test deletion",
+    }),
+  });
+  const textMsgJson = await textMsgRes.json();
+  const textMsgId = textMsgJson?.data?.id;
+
+  if (textMsgId) {
+    const delTextRes = await fetch(`${BASE_URL}/api/messages?id=${textMsgId}`, {
+      method: "DELETE",
+      headers: { Cookie: adnan.cookie || '' },
+    });
+    const delTextJson = await delTextRes.json();
+    record("DELETE", "Author successfully deletes text message", delTextRes.ok && delTextJson?.success, `ID: ${textMsgId.slice(0, 8)}...`);
+
+    // Verify it is no longer returned in GET /api/messages
+    const verifyDelRes = await fetch(`${BASE_URL}/api/messages?channelType=GENERAL&channelId=general`, {
+      headers: { Cookie: adnan.cookie || '' },
+    });
+    const verifyDelJson = await verifyDelRes.json();
+    const stillExists = (verifyDelJson?.data || []).some((m: any) => m.id === textMsgId);
+    record("DELETE", "Deleted message is confirmed removed from database and feed", !stillExists, `Cleaned from feed`);
+  }
 }
 
 async function auditDashboardEndpoints() {

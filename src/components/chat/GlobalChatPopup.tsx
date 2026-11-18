@@ -73,8 +73,26 @@ export function GlobalChatPopup({
   const [inputText, setInputText] = useState("");
   const [sending, setSending] = useState(false);
   const [popupUploading, setPopupUploading] = useState(false);
+  const [deletingPopupId, setDeletingPopupId] = useState<string | null>(null);
   const [selectedPopupMedia, setSelectedPopupMedia] = useState<string | null>(null);
   const popupFileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleDeletePopupMessage = async (messageId: string, isMedia?: boolean) => {
+    const itemLabel = isMedia ? "video / attachment" : "message";
+    if (!window.confirm(`Are you sure you want to delete this ${itemLabel}?`)) return;
+
+    try {
+      setDeletingPopupId(messageId);
+      setThreadMessages((prev) => prev.filter((m) => m.id !== messageId));
+      await fetch(`/api/messages?id=${encodeURIComponent(messageId)}`, {
+        method: "DELETE",
+      });
+    } catch (err) {
+      console.error("Failed to delete message:", err);
+    } finally {
+      setDeletingPopupId(null);
+    }
+  };
 
   const lastCheckedRef = useRef<string>(new Date(Date.now() - 5000).toISOString());
   const seenIdsRef = useRef<Set<string>>(new Set());
@@ -608,15 +626,40 @@ export function GlobalChatPopup({
                             src={msg.content}
                             className="max-w-[200px] sm:max-w-[260px] max-h-[180px] rounded-xl shadow-xs"
                           />
-                          <p className="text-[9px] opacity-75 font-semibold">🎥 Video</p>
+                          <div className="flex items-center justify-between gap-1">
+                            <p className="text-[9px] opacity-75 font-semibold">🎥 Video</p>
+                            {isMe && (
+                              <button
+                                type="button"
+                                onClick={() => handleDeletePopupMessage(msg.id, true)}
+                                disabled={deletingPopupId === msg.id}
+                                className="text-[9px] font-bold text-rose-200 hover:text-white"
+                              >
+                                🗑️ Delete Video
+                              </button>
+                            )}
+                          </div>
                         </div>
                       ) : (
                         <p className="break-words leading-relaxed">{msg.content}</p>
                       )}
                     </div>
-                    <span className="text-[9px] text-slate-400 mt-0.5 px-1 font-medium">
-                      {friendlyDate(msg.createdAt)}
-                    </span>
+                    <div className="flex items-center gap-2 mt-0.5 px-1">
+                      <span className="text-[9px] text-slate-400 font-medium">
+                        {friendlyDate(msg.createdAt)}
+                      </span>
+                      {isMe && (
+                        <button
+                          type="button"
+                          onClick={() => handleDeletePopupMessage(msg.id, msg.content.startsWith("data:video"))}
+                          disabled={deletingPopupId === msg.id}
+                          className="text-[10px] text-rose-500 hover:text-rose-700 font-bold"
+                          title="Delete message"
+                        >
+                          🗑️
+                        </button>
+                      )}
+                    </div>
                   </div>
                 );
               })

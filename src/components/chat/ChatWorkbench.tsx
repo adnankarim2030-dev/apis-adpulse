@@ -27,12 +27,14 @@ interface MessageItem {
 interface ChatWorkbenchProps {
   currentUserId: string;
   currentUserName: string;
+  currentUserRole?: string;
   channels: ChannelItem[];
 }
 
 export function ChatWorkbench({
   currentUserId,
   currentUserName,
+  currentUserRole,
   channels,
 }: ChatWorkbenchProps) {
   const [activeChannel, setActiveChannel] = useState<ChannelItem>(
@@ -47,6 +49,7 @@ export function ChatWorkbench({
   const [loading, setLoading] = useState(false);
   const [inputText, setInputText] = useState("");
   const [sending, setSending] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // Voice Note Recording State
   const [isRecording, setIsRecording] = useState(false);
@@ -95,6 +98,32 @@ export function ChatWorkbench({
     },
     [activeChannel.id, activeChannel.type]
   );
+
+  const handleDeleteMessage = async (messageId: string, isMedia?: boolean) => {
+    const itemLabel = isMedia ? "video / attachment" : "message";
+    if (!window.confirm(`Are you sure you want to delete this ${itemLabel}?`)) return;
+
+    try {
+      setDeletingId(messageId);
+      // Optimistic delete
+      setMessages((prev) => prev.filter((m) => m.id !== messageId));
+
+      const res = await fetch(`/api/messages?id=${encodeURIComponent(messageId)}`, {
+        method: "DELETE",
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || "Failed to delete message");
+        fetchMessages(false);
+      }
+    } catch (err) {
+      console.error("Failed to delete message:", err);
+      fetchMessages(false);
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   // Poll for incoming calls when not already in an active call
   const pollIncomingCalls = useCallback(async () => {
@@ -626,6 +655,7 @@ export function ChatWorkbench({
           ) : (
             messages.map((msg) => {
               const isMe = msg.senderId === currentUserId;
+              const canDelete = isMe || currentUserRole === "CEO";
               const isAudio = msg.content.startsWith("data:audio");
               const isImage = msg.content.startsWith("data:image");
               const isVideo = msg.content.startsWith("data:video");
@@ -683,15 +713,33 @@ export function ChatWorkbench({
                           </p>
                         </div>
                       ) : isVideo ? (
-                        <div className="py-1 space-y-1">
+                        <div className="py-1 space-y-1.5">
                           <video
                             controls
                             src={msg.content}
                             className="max-w-[240px] sm:max-w-[320px] max-h-[260px] rounded-xl shadow-md border border-slate-200/50"
                           />
-                          <p className={`text-[9px] font-semibold ${isMe ? "text-white/80" : "text-muted"}`}>
-                            🎥 Video
-                          </p>
+                          <div className="flex items-center justify-between gap-2">
+                            <p className={`text-[9px] font-semibold ${isMe ? "text-white/80" : "text-muted"}`}>
+                              🎥 Video
+                            </p>
+                            {canDelete && (
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteMessage(msg.id, true)}
+                                disabled={deletingId === msg.id}
+                                className={`text-[10px] font-bold px-2 py-0.5 rounded border transition-all flex items-center gap-1 ${
+                                  isMe
+                                    ? "bg-rose-500/20 text-rose-100 border-rose-400/40 hover:bg-rose-600 hover:text-white"
+                                    : "bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100"
+                                }`}
+                                title="Delete video"
+                              >
+                                <span>🗑️</span>
+                                <span>{deletingId === msg.id ? "Deleting..." : "Delete Video"}</span>
+                              </button>
+                            )}
+                          </div>
                         </div>
                       ) : isCloudFile && cloudFileData ? (
                         <div className="py-1 space-y-2 min-w-[220px]">
@@ -712,14 +760,31 @@ export function ChatWorkbench({
                               </span>
                             </div>
                           </div>
-                          <a
-                            href={cloudFileData.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold text-xs shadow-xs transition-colors w-full justify-center"
-                          >
-                            <span>📥 Download File {cloudFileData.size ? `(${cloudFileData.size})` : ""}</span>
-                          </a>
+                          <div className="flex items-center gap-1.5">
+                            <a
+                              href={cloudFileData.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold text-xs shadow-xs transition-colors flex-1 justify-center"
+                            >
+                              <span>📥 Download File {cloudFileData.size ? `(${cloudFileData.size})` : ""}</span>
+                            </a>
+                            {canDelete && (
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteMessage(msg.id, true)}
+                                disabled={deletingId === msg.id}
+                                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold border transition-colors ${
+                                  isMe
+                                    ? "bg-rose-500/20 text-rose-100 border-rose-400/40 hover:bg-rose-600 hover:text-white"
+                                    : "bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100"
+                                }`}
+                                title="Delete file"
+                              >
+                                🗑️
+                              </button>
+                            )}
+                          </div>
                         </div>
                       ) : isCallInvite ? (
                         <div className="space-y-1.5 py-1">
@@ -738,13 +803,33 @@ export function ChatWorkbench({
                       ) : (
                         <p className="whitespace-pre-wrap">{msg.content}</p>
                       )}
-                      <p
-                        className={`text-[9px] mt-1 text-right font-mono ${
-                          isMe ? "text-white/70" : "text-subtle"
-                        }`}
-                      >
-                        {friendlyDate(msg.createdAt)}
-                      </p>
+                      <div className="flex items-center justify-between gap-3 mt-1.5 pt-1 border-t border-black/5 dark:border-white/5">
+                        {canDelete ? (
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteMessage(msg.id, isVideo)}
+                            disabled={deletingId === msg.id}
+                            title={isVideo ? "Delete Video" : "Delete Message"}
+                            className={`text-[10px] font-bold flex items-center gap-1 transition-all ${
+                              isMe
+                                ? "text-rose-200 hover:text-white"
+                                : "text-rose-500 hover:text-rose-700"
+                            }`}
+                          >
+                            <span>🗑️</span>
+                            <span>{deletingId === msg.id ? "Deleting..." : isVideo ? "Delete Video" : "Delete"}</span>
+                          </button>
+                        ) : (
+                          <span />
+                        )}
+                        <p
+                          className={`text-[9px] font-mono ${
+                            isMe ? "text-white/70" : "text-subtle"
+                          }`}
+                        >
+                          {friendlyDate(msg.createdAt)}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>

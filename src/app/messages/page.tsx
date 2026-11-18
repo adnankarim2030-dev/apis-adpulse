@@ -61,6 +61,7 @@ export default async function MessagesPage() {
         <ChatWorkbench
           currentUserId={session.userId}
           currentUserName={session.name}
+          currentUserRole={session.role}
           channels={channels}
         />
       </div>
