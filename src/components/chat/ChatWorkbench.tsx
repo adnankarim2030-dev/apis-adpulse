@@ -5,6 +5,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { friendlyDate } from "@/lib/format";
 import { WhatsAppVoiceCallModal, type ActiveCallState } from "@/components/chat/WhatsAppVoiceCallModal";
 import { CloudflareSetupModal } from "@/components/chat/CloudflareSetupModal";
+import { EmojiPickerPopover } from "@/components/chat/EmojiPickerPopover";
 
 interface ChannelItem {
   id: string;
@@ -50,6 +51,7 @@ export function ChatWorkbench({
   const [inputText, setInputText] = useState("");
   const [sending, setSending] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
   // Voice Note Recording State
   const [isRecording, setIsRecording] = useState(false);
@@ -122,6 +124,35 @@ export function ChatWorkbench({
       fetchMessages(false);
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  const handleSendInstantReaction = async (emoji: string) => {
+    setShowEmojiPicker(false);
+    const tempId = `temp-${Date.now()}`;
+    const optimisticMsg: MessageItem = {
+      id: tempId,
+      senderId: currentUserId,
+      senderName: currentUserName,
+      content: emoji,
+      createdAt: new Date().toISOString(),
+      channelId: activeChannel.id,
+    };
+    setMessages((prev) => [...prev, optimisticMsg]);
+
+    try {
+      await fetch("/api/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          channelType: activeChannel.type,
+          channelId: activeChannel.id,
+          content: emoji,
+        }),
+      });
+      fetchMessages(false);
+    } catch (err) {
+      console.error("Failed to send emoji reaction:", err);
     }
   };
 
@@ -661,6 +692,7 @@ export function ChatWorkbench({
               const isVideo = msg.content.startsWith("data:video");
               const isCloudFile = msg.content.startsWith("[FILE_ATTACHMENT]:");
               const isCallInvite = msg.content.includes("Started a Video Call") || msg.content.includes("Started a Voice Call") || msg.content.includes("Voice Call with");
+              const isEmojiOnly = !isAudio && !isImage && !isVideo && !isCloudFile && !isCallInvite && /^(\p{Extended_Pictographic}|\s)+$/u.test(msg.content.trim()) && msg.content.trim().length <= 16;
 
               let cloudFileData: { name: string; size: string; url: string } | null = null;
               if (isCloudFile) {
@@ -800,6 +832,12 @@ export function ChatWorkbench({
                             <span>📞 Call Back / Join</span>
                           </button>
                         </div>
+                      ) : isEmojiOnly ? (
+                        <div className="py-0.5">
+                          <span className="text-3xl sm:text-4xl inline-block hover:scale-125 transition-transform duration-200 cursor-pointer select-none">
+                            {msg.content}
+                          </span>
+                        </div>
                       ) : (
                         <p className="whitespace-pre-wrap">{msg.content}</p>
                       )}
@@ -913,6 +951,31 @@ export function ChatWorkbench({
                 <span>☁️</span>
                 <span className="hidden sm:inline">Cloud Link</span>
               </button>
+
+              {/* 😊 Emoji Picker Button & Animated Popover */}
+              <div className="relative shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setShowEmojiPicker((prev) => !prev)}
+                  className={`rounded-button text-base p-2.5 min-h-[44px] min-w-[44px] flex items-center justify-center transition-all border shadow-xs cursor-pointer select-none ${
+                    showEmojiPicker
+                      ? "bg-teal-100 text-teal-800 border-teal-400 ring-2 ring-teal-500/20"
+                      : "bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200"
+                  }`}
+                  title="Professional & Animated Emojis (Click to open)"
+                >
+                  <span className="hover:scale-125 transition-transform duration-150">😊</span>
+                </button>
+
+                <EmojiPickerPopover
+                  isOpen={showEmojiPicker}
+                  onClose={() => setShowEmojiPicker(false)}
+                  onSelectEmoji={(emoji) => {
+                    setInputText((prev) => prev + emoji);
+                  }}
+                  onSendInstantReaction={handleSendInstantReaction}
+                />
+              </div>
 
               <input
                 type="text"

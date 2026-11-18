@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Avatar } from "@/components/ui/Avatar";
 import { friendlyDate } from "@/lib/format";
 import { WhatsAppVoiceCallModal, type ActiveCallState } from "@/components/chat/WhatsAppVoiceCallModal";
+import { EmojiPickerPopover } from "@/components/chat/EmojiPickerPopover";
 
 interface IncomingMessage {
   id: string;
@@ -73,6 +74,7 @@ export function GlobalChatPopup({
   const [inputText, setInputText] = useState("");
   const [sending, setSending] = useState(false);
   const [popupUploading, setPopupUploading] = useState(false);
+  const [showPopupEmojiPicker, setShowPopupEmojiPicker] = useState(false);
   const [deletingPopupId, setDeletingPopupId] = useState<string | null>(null);
   const [selectedPopupMedia, setSelectedPopupMedia] = useState<string | null>(null);
   const popupFileInputRef = useRef<HTMLInputElement>(null);
@@ -550,6 +552,7 @@ export function GlobalChatPopup({
             ) : (
               threadMessages.map((msg) => {
                 const isMe = msg.senderId === currentUserId || msg.senderName === currentUserName;
+                const isEmojiOnly = !msg.content.startsWith("data:") && !msg.content.startsWith("[FILE_ATTACHMENT]:") && /^(\p{Extended_Pictographic}|\s)+$/u.test(msg.content.trim()) && msg.content.trim().length <= 16;
                 return (
                   <div
                     key={msg.id}
@@ -640,6 +643,12 @@ export function GlobalChatPopup({
                             )}
                           </div>
                         </div>
+                      ) : isEmojiOnly ? (
+                        <div className="py-0.5">
+                          <span className="text-2xl sm:text-3xl inline-block hover:scale-125 transition-transform duration-200 cursor-pointer select-none">
+                            {msg.content}
+                          </span>
+                        </div>
                       ) : (
                         <p className="break-words leading-relaxed">{msg.content}</p>
                       )}
@@ -687,6 +696,30 @@ export function GlobalChatPopup({
             >
               {popupUploading ? <span className="animate-spin text-xs">⏳</span> : "📎"}
             </button>
+
+            {/* 😊 Emoji Picker Button & Animated Popover */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowPopupEmojiPicker((prev) => !prev)}
+                className={`p-2 rounded-xl text-sm flex items-center justify-center transition-colors border ${
+                  showPopupEmojiPicker
+                    ? "bg-teal-100 text-teal-800 border-teal-300 ring-2 ring-teal-500/20"
+                    : "bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200"
+                }`}
+                title="Professional & Animated Emojis"
+              >
+                <span className="hover:scale-125 transition-transform duration-150">😊</span>
+              </button>
+
+              <EmojiPickerPopover
+                isOpen={showPopupEmojiPicker}
+                onClose={() => setShowPopupEmojiPicker(false)}
+                onSelectEmoji={(emoji) => {
+                  setInputText((prev) => prev + emoji);
+                }}
+              />
+            </div>
 
             <input
               type="text"
