@@ -120,7 +120,7 @@ export const TEAM_ROSTER = [
     password: "Faizan#Pulse72",
   },
   {
-    name: "Khizar Jaffrani",
+    name: "Muhammad Khizar",
     email: "khizar@apis.com",
     role: "STAFF" as const,
     jobTitle: "Client Service Executive",

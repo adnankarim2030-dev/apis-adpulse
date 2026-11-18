@@ -36,7 +36,7 @@ const ROSTER = [
   { name: "Fatima (Creative Executive)", email: "fatima@apis.com", password: "Fatima*Design51", expectedRole: "STAFF" },
   { name: "Ozam (Graphics Designer)", email: "ozam@apis.com", password: "Ozam*Vector48", expectedRole: "STAFF" },
   { name: "Faizan Ahmed (Media Operations)", email: "faizan@apis.com", password: "Faizan#Pulse72", expectedRole: "STAFF" },
-  { name: "Khizar Jaffrani (Client Service)", email: "khizar@apis.com", password: "Khizar*Apex68", expectedRole: "STAFF" },
+  { name: "Muhammad Khizar (Client Service)", email: "khizar@apis.com", password: "Khizar*Apex68", expectedRole: "STAFF" },
   { name: "Khurram Jaffrani (CEO Alias)", email: "ceo@adpulse.com", password: "Khurram#Apex94", expectedRole: "CEO" },
 ];
 
