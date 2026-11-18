@@ -13,9 +13,19 @@ export default async function MessagesPage() {
       isActive: true,
       id: { not: session.userId },
       name: { not: "Ahmed Khan" },
+      email: { not: "ceo@adpulse.com" },
     },
     select: { id: true, name: true, jobTitle: true, department: true },
     orderBy: { name: "asc" },
+  });
+
+  // Deduplicate by name so each person appears exactly once
+  const seenNames = new Set<string>();
+  const uniqueStaff = staffUsers.filter((s) => {
+    const key = s.name.trim().toLowerCase();
+    if (seenNames.has(key)) return false;
+    seenNames.add(key);
+    return true;
   });
 
   const channels = [
@@ -25,7 +35,7 @@ export default async function MessagesPage() {
       type: "GENERAL" as const,
       subtitle: "AdPulse company-wide discussion",
     },
-    ...staffUsers.map((s) => ({
+    ...uniqueStaff.map((s) => ({
       id: s.id,
       name: s.name,
       type: "DIRECT" as const,

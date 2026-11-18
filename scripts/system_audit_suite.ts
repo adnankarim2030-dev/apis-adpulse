@@ -35,6 +35,8 @@ const ROSTER = [
   { name: "Maha (Media Executive)", email: "maha@apis.com", password: "Maha#Reach39", expectedRole: "STAFF" },
   { name: "Fatima (Creative Executive)", email: "fatima@apis.com", password: "Fatima*Design51", expectedRole: "STAFF" },
   { name: "Ozam (Graphics Designer)", email: "ozam@apis.com", password: "Ozam*Vector48", expectedRole: "STAFF" },
+  { name: "Faizan Ahmed (Media Operations)", email: "faizan@apis.com", password: "Faizan#Pulse72", expectedRole: "STAFF" },
+  { name: "Khizar Jaffrani (Client Service)", email: "khizar@apis.com", password: "Khizar*Apex68", expectedRole: "STAFF" },
   { name: "Khurram Jaffrani (CEO Alias)", email: "ceo@adpulse.com", password: "Khurram#Apex94", expectedRole: "CEO" },
 ];
 
@@ -42,7 +44,7 @@ const sessions: Record<string, { cookie: string; user: any }> = {};
 
 async function auditLogins() {
   console.log("\n=======================================================");
-  console.log(" 1. AUDIT: ALL 13 ADMIN & STAFF CREDENTIALS LOGIN TEST");
+  console.log(" 1. AUDIT: ALL 15 ADMIN & STAFF CREDENTIALS LOGIN TEST");
   console.log("=======================================================");
 
   for (const member of ROSTER) {
@@ -60,7 +62,8 @@ async function auditLogins() {
       const json = await res.json();
       const user = json?.data;
 
-      const success = res.status === 200 && user?.email === member.email && user?.role === member.expectedRole;
+      const expectedEmail = member.email === "ceo@adpulse.com" ? "khurram@apis.com" : member.email;
+      const success = res.status === 200 && user?.email === expectedEmail && user?.role === member.expectedRole;
       if (success) {
         sessions[member.email] = { cookie: sessionCookie, user };
         record("LOGIN", `${member.name} (${member.email})`, true, `Role: ${user.role}, ID: ${user.id.slice(0, 8)}...`);
@@ -91,6 +94,10 @@ async function auditRosterExclusion() {
   );
 
   record("EXCLUSION", "Staff Directory API excludes Ahmed Khan", !ahmedInStaff, `Total Staff: ${staffList.length}`);
+
+  const staffNames = staffList.map((s: any) => s.name.toLowerCase().trim());
+  const hasDuplicateNames = new Set(staffNames).size !== staffNames.length;
+  record("EXCLUSION", "Staff Directory has zero duplicate names", !hasDuplicateNames, `Total Unique Staff: ${new Set(staffNames).size}`);
 
   // 2. Check /messages page staff list
   const msgRes = await fetch(`${BASE_URL}/messages`, {

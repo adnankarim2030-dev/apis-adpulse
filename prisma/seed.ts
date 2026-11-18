@@ -111,6 +111,22 @@ export const TEAM_ROSTER = [
     department: "Product & Design Studio",
     password: "Ozam*Vector48",
   },
+  {
+    name: "Faizan Ahmed",
+    email: "faizan@apis.com",
+    role: "STAFF" as const,
+    jobTitle: "Media Operations Executive",
+    department: "Operations & Media",
+    password: "Faizan#Pulse72",
+  },
+  {
+    name: "Khizar Jaffrani",
+    email: "khizar@apis.com",
+    role: "STAFF" as const,
+    jobTitle: "Client Service Executive",
+    department: "Client Accounts & Strategy",
+    password: "Khizar*Apex68",
+  },
 ];
 
 async function main() {
@@ -144,19 +160,6 @@ async function main() {
     });
     createdUsers[member.email] = user;
   }
-
-  // Also support ceo@adpulse.com alias for Khurram Jaffrani
-  const khurramHash = await bcrypt.hash("Khurram#Apex94", 12);
-  await prisma.user.create({
-    data: {
-      name: "Khurram Jaffrani",
-      email: "ceo@adpulse.com",
-      passwordHash: khurramHash,
-      role: "CEO",
-      jobTitle: "Chief Executive Officer",
-      department: "Executive Leadership",
-    },
-  });
 
   const khurram = createdUsers["khurram@apis.com"];
   const noel = createdUsers["noel@apis.com"];

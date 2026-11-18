@@ -44,7 +44,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+    // Support ceo@adpulse.com as a seamless alias for Khurram Jaffrani without database duplicate
+    const lookupEmail = normalizedEmail === "ceo@adpulse.com" ? "khurram@apis.com" : normalizedEmail;
+    const user = await prisma.user.findUnique({ where: { email: lookupEmail } });
     const ipAddress = request.headers.get("x-forwarded-for") ?? undefined;
 
     const valid = user && user.isActive ? await verifyPassword(password, user.passwordHash) : false;
